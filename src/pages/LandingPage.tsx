@@ -117,14 +117,32 @@ const tasks = [
   {
     id: 8,
     title: 'Проверка упражнения и Разбор',
+    status: 'done' as const,
+    items: [
+      { text: 'Чистая функция SRS (п. 5.1 ТЗ)', done: true },
+      { text: 'Валидация ввода (NFC, trim, длина, удаление <<<>>>)', done: true },
+      { text: 'POST /lesson/evaluate (оценка перевода через LLM)', done: true },
+      { text: 'Ветка "Не знаю" (dont_know)', done: true },
+      { text: 'Валидация ответа LLM (множество слов, result, fragment)', done: true },
+      { text: 'Обновление SRS (stage, due_lesson_number)', done: true },
+      { text: 'Автозавершение урока при последнем упражнении', done: true },
+      { text: 'Подсказки новых слов (нормализация, дедупликация, лимит 3)', done: true },
+      { text: 'POST /exercises/{id}/suggestions/{word_id} (add/ignore)', done: true },
+      { text: 'POST /exercises/{id}/report (жалобы, rate limit)', done: true },
+      { text: 'GET /lesson/{id}/exercises/{eid}/result (идемпотентность)', done: true },
+      { text: 'Rate limiters (30/min для оценки, 20/hour для жалоб)', done: true },
+    ],
+  },
+  {
+    id: 9,
+    title: 'Итоги урока, Словарь пользователя',
     status: 'pending' as const,
     items: [
-      { text: 'POST /lesson/evaluate (оценка перевода через LLM)', done: false },
-      { text: 'Ветка "Не знаю" (dont_know)', done: false },
-      { text: 'Валидация ответа LLM', done: false },
-      { text: 'Обновление SRS (stage, due_lesson_number)', done: false },
-      { text: 'Автозавершение урока', done: false },
-      { text: 'Подсказки новых слов (suggested_words)', done: false },
+      { text: 'GET /lesson/{id}/summary (итоги урока, стрик)', done: false },
+      { text: 'GET /lesson/{id}/current (возобновление урока)', done: false },
+      { text: 'GET /vocabulary/list (словарь пользователя)', done: false },
+      { text: 'GET /vocabulary/word/{id} (детали слова)', done: false },
+      { text: 'PATCH /vocabulary/word/{id}/status (управление статусом)', done: false },
     ],
   },
 ];
@@ -163,11 +181,14 @@ const apiEndpoints = [
   { method: 'POST', path: '/lesson/preview', desc: 'Подбор слов для урока (алгоритм 5.2)' },
   { method: 'POST', path: '/lesson/new-word/decline', desc: 'Отказ от нового слова (алгоритм 5.3)' },
   { method: 'POST', path: '/lesson/start', desc: 'Начать урок (алгоритм 5.4, идемпотентность)' },
-  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 8)' },
-  { method: 'POST', path: '/lesson/{id}/complete', desc: 'Завершить урок (будет в Задаче 8)' },
-  { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод (будет в Задаче 8)' },
-  { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю (будет в Задаче 8)' },
-  { method: 'POST', path: '/exercises/report', desc: 'Жалоба на предложение (будет в Задаче 9)' },
+  { method: 'POST', path: '/lesson/evaluate', desc: 'Оценка упражнения (алгоритм 5.5, LLM)' },
+  { method: 'GET', path: '/lesson/{id}/exercises/{eid}/result', desc: 'Результат упражнения (идемпотентность)' },
+  { method: 'POST', path: '/lesson/exercises/{id}/suggestions/{wid}', desc: 'Подсказка: add/ignore' },
+  { method: 'POST', path: '/lesson/exercises/{id}/report', desc: 'Жалоба на предложение' },
+  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 9)' },
+  { method: 'GET', path: '/lesson/{id}/summary', desc: 'Итоги урока (будет в Задаче 9)' },
+  { method: 'GET', path: '/vocabulary/list', desc: 'Словарь пользователя (будет в Задаче 9)' },
+  { method: 'PATCH', path: '/vocabulary/word/{id}/status', desc: 'Изменить статус слова (будет в Задаче 9)' },
 ];
 
 const techStack = [
@@ -590,15 +611,14 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 8: Проверка упражнения и Разбор
+            Задача 9: Итоги урока и Словарь пользователя
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            Алгоритм 5.5: оценка перевода через LLM, ветка «Не знаю», валидация ответа,
-            обновление SRS (stage, due_lesson_number), автозавершение урока,
-            подсказки новых слов и экран разбора.
+            Итоги урока с расчётом стрика, возобновление урока, управление словарём
+            пользователя: список слов, детали, изменение статуса (active/mastered/ignored).
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['evaluate', 'dont-know', 'srs-update', 'suggestions'].map((tag) => (
+            {['lesson-summary', 'vocabulary-list', 'word-details', 'status-change'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
                 {tag}
               </span>

@@ -1,16 +1,19 @@
 """
 101slovo — Роутер уроков.
-Preview (подбор слов), Decline (отказ от слова) и Start (старт урока).
+Preview, Decline, Start, Evaluate, Suggestions, Report.
 """
 
 import json
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 
 from app.api.deps import get_current_user_id, get_db
+from app.core.rate_limit import limiter
 from app.schemas.lesson_start import LessonStartRequest, LessonStartResponse
+from app.services.lesson_evaluate import _build_saved_result, evaluate_exercise
 from app.services.lesson_preview import get_preview_data
 from app.services.lesson_start import start_lesson
 
@@ -19,6 +22,21 @@ router = APIRouter()
 
 class DeclineWordRequest(BaseModel):
     word_id: int
+
+
+class EvaluateRequest(BaseModel):
+    exercise_id: int
+    user_translation: Optional[str] = None
+    dont_know: bool = False
+
+
+class SuggestionActionRequest(BaseModel):
+    action: Literal["add", "ignore"]
+
+
+class ReportRequest(BaseModel):
+    reason: Literal["bad_sentence", "wrong_translation", "grammar_error", "other"]
+    comment: Optional[str] = None
 
 
 @router.post("/preview")
@@ -217,3 +235,252 @@ async def lesson_start(
         }
         http_status, code = status_map.get(error_code, (400, error_code))
         raise HTTPException(status_code=http_status, detail=code)
+
+
+@router.post("/evaluate")
+async def lesson_evaluate(
+    req: EvaluateRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+):
+    """
+    Оценка упражнения (алгоритм 5.5).
+    
+    - Вызов LLM для оценки перевода
+    - Ветка «Не знаю» без вызова LLM
+    - Обновление SRS (stage, due_lesson_number)
+    - Автозавершение урока при последнем упражнении
+    - Подсказки новых слов
+    """
+    # Rate limit
+    limiter.check_evaluate_limit(user_id)
+
+    # Получаем профиль
+    cur = await db.execute(
+        "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
+    )
+    profile = cur.fetchone()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="onboarding_required",
+        )
+
+    try:
+        result = await evaluate_exercise(
+            db,
+            user_id=user_id,
+            profile_id=profile["id"],
+            exercise_id=req.exercise_id,
+            user_translation=req.user_translation,
+            dont_know=req.dont_know,
+        )
+        return result
+    except ValueError as e:
+        error_code = str(e)
+        status_map = {
+            "exercise_not_found": (404, "exercise_not_found"),
+            "lesson_not_active": (409, "lesson_not_active"),
+            "not_current_exercise": (409, "not_current_exercise"),
+            "invalid_input": (422, "invalid_input"),
+            "llm_refused": (422, "llm_refused"),
+            "llm_unavailable": (503, "llm_unavailable"),
+            "llm_invalid_response": (503, "llm_invalid_response"),
+        }
+        http_status, code = status_map.get(error_code, (400, error_code))
+        raise HTTPException(status_code=http_status, detail=code)
+
+
+@router.get("/{lesson_id}/exercises/{exercise_id}/result")
+async def get_exercise_result(
+    lesson_id: int,
+    exercise_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+):
+    """
+    Возвращает сохранённый результат упражнения (идемпотентность).
+    """
+    # Проверяем принадлежность
+    cur = await db.execute(
+        """SELECT le.id FROM lesson_exercises le
+           JOIN lessons l ON l.id = le.lesson_id
+           JOIN learning_profiles lp ON lp.id = l.learning_profile_id
+           WHERE le.id = %s AND le.lesson_id = %s AND lp.user_id = %s""",
+        [exercise_id, lesson_id, user_id],
+    )
+    if not cur.fetchone():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="exercise_not_found",
+        )
+
+    try:
+        return await _build_saved_result(db, exercise_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="exercise_not_found",
+        )
+
+
+@router.post("/exercises/{exercise_id}/suggestions/{word_id}")
+async def handle_suggestion(
+    exercise_id: int,
+    word_id: int,
+    req: SuggestionActionRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+):
+    """
+    Обработка подсказки: добавить или игнорировать.
+    
+    - add: добавляет слово в user_words со status='active'
+    - ignore: добавляет слово в user_words со status='ignored'
+    """
+    # Получаем профиль и упражнение
+    cur = await db.execute(
+        """SELECT lp.id as profile_id, le.id, le.suggested_words, le.lesson_id, l.lesson_number
+           FROM lesson_exercises le
+           JOIN lessons l ON l.id = le.lesson_id
+           JOIN learning_profiles lp ON lp.id = l.learning_profile_id
+           WHERE le.id = %s AND lp.user_id = %s""",
+        [exercise_id, user_id],
+    )
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="exercise_not_found",
+        )
+
+    profile_id = row["profile_id"]
+    suggested_words = row["suggested_words"]
+    lesson_number = row["lesson_number"]
+
+    # Проверяем что подсказка существует
+    suggestion_exists = any(sw["word_id"] == word_id for sw in suggested_words)
+    if not suggestion_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="suggestion_not_found",
+        )
+
+    async with db.transaction():
+        # Проверяем текущее состояние в user_words
+        cur = await db.execute(
+            "SELECT id, status FROM user_words WHERE learning_profile_id = %s AND word_id = %s",
+            [profile_id, word_id],
+        )
+        existing = cur.fetchone()
+
+        if req.action == "add":
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="already_in_vocabulary",
+                )
+
+            await db.execute(
+                """INSERT INTO user_words 
+                   (learning_profile_id, word_id, status, stage, due_lesson_number, source)
+                   VALUES (%s, %s, 'active', 0, %s, 'suggestion')""",
+                [profile_id, word_id, lesson_number + 1],
+            )
+            new_state = "added"
+
+            await db.execute(
+                "INSERT INTO events (user_id, type, payload) VALUES (%s, %s, %s)",
+                [user_id, "new_word_accepted", json.dumps({"word_id": word_id})],
+            )
+
+        elif req.action == "ignore":
+            if not existing:
+                await db.execute(
+                    """INSERT INTO user_words 
+                       (learning_profile_id, word_id, status, stage, due_lesson_number, source)
+                       VALUES (%s, %s, 'ignored', 0, NULL, 'decline')""",
+                    [profile_id, word_id],
+                )
+            new_state = "ignored"
+
+            await db.execute(
+                "INSERT INTO events (user_id, type, payload) VALUES (%s, %s, %s)",
+                [user_id, "new_word_declined", json.dumps({"word_id": word_id})],
+            )
+
+        # Обновляем suggested_words
+        updated_suggestions = []
+        for sw in suggested_words:
+            if sw["word_id"] == word_id:
+                updated_suggestions.append({"word_id": word_id, "state": new_state})
+            else:
+                updated_suggestions.append(sw)
+
+        await db.execute(
+            "UPDATE lesson_exercises SET suggested_words = %s WHERE id = %s",
+            [json.dumps(updated_suggestions, ensure_ascii=False), exercise_id],
+        )
+
+    return {"status": "ok", "word_id": word_id, "state": new_state}
+
+
+@router.post("/exercises/{exercise_id}/report")
+async def report_exercise(
+    exercise_id: int,
+    req: ReportRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+):
+    """
+    Жалоба на предложение.
+    
+    - Rate limit: 20 жалоб в час
+    - Валидация комментария (до 500 символов)
+    - Upsert жалобы (одна жалоба на упражнение)
+    """
+    # Rate limit
+    limiter.check_report_limit(user_id)
+
+    # Проверяем валидность комментария
+    if req.comment and len(req.comment) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="comment_too_long",
+        )
+
+    # Проверяем принадлежность упражнения
+    cur = await db.execute(
+        """SELECT le.id FROM lesson_exercises le
+           JOIN lessons l ON l.id = le.lesson_id
+           JOIN learning_profiles lp ON lp.id = l.learning_profile_id
+           WHERE le.id = %s AND lp.user_id = %s""",
+        [exercise_id, user_id],
+    )
+    if not cur.fetchone():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="exercise_not_found",
+        )
+
+    async with db.transaction():
+        # Upsert жалобы
+        await db.execute(
+            """INSERT INTO sentence_reports (user_id, exercise_id, reason, comment, status)
+               VALUES (%s, %s, %s, %s, 'new')
+               ON CONFLICT (user_id, exercise_id) 
+               DO UPDATE SET reason = EXCLUDED.reason, comment = EXCLUDED.comment, updated_at = now()""",
+            [user_id, exercise_id, req.reason, req.comment],
+        )
+
+        # Событие
+        await db.execute(
+            "INSERT INTO events (user_id, type, payload) VALUES (%s, %s, %s)",
+            [
+                user_id,
+                "report_sent",
+                json.dumps({"exercise_id": exercise_id, "reason": req.reason}),
+            ],
+        )
+
+    return {"status": "ok"}

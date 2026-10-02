@@ -14,11 +14,15 @@ class MemoryRateLimiter:
     
     - IP limit: 10 запросов в минуту (защита от массовых запросов)
     - Email limit: 5 неудачных попыток за 15 минут (защита от брутфорса)
+    - Evaluate limit: 30 запросов в минуту на пользователя
+    - Report limit: 20 жалоб в час на пользователя
     """
 
     def __init__(self):
         self._ip_attempts: dict[str, list[float]] = defaultdict(list)
         self._email_failures: dict[str, list[float]] = defaultdict(list)
+        self._evaluate_attempts: dict[int, list[float]] = defaultdict(list)
+        self._report_attempts: dict[int, list[float]] = defaultdict(list)
 
     def check_ip_limit(self, ip: str) -> None:
         """
@@ -66,6 +70,50 @@ class MemoryRateLimiter:
         """Запись неудачной попытки входа."""
         now = __import__("time").time()
         self._email_failures[email].append(now)
+
+    def check_evaluate_limit(self, user_id: int) -> None:
+        """
+        Проверка лимита запросов оценки упражнения.
+        Максимум 30 запросов в минуту на пользователя.
+        """
+        now = __import__("time").time()
+        window = 60  # 1 минута
+        max_attempts = 30
+
+        # Очистка старых записей
+        self._evaluate_attempts[user_id] = [
+            t for t in self._evaluate_attempts[user_id] if now - t < window
+        ]
+
+        if len(self._evaluate_attempts[user_id]) >= max_attempts:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="too_many_requests",
+            )
+
+        self._evaluate_attempts[user_id].append(now)
+
+    def check_report_limit(self, user_id: int) -> None:
+        """
+        Проверка лимита жалоб на предложения.
+        Максимум 20 жалоб в час на пользователя.
+        """
+        now = __import__("time").time()
+        window = 3600  # 1 час
+        max_attempts = 20
+
+        # Очистка старых записей
+        self._report_attempts[user_id] = [
+            t for t in self._report_attempts[user_id] if now - t < window
+        ]
+
+        if len(self._report_attempts[user_id]) >= max_attempts:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="too_many_reports",
+            )
+
+        self._report_attempts[user_id].append(now)
 
     def cleanup(self) -> None:
         """
