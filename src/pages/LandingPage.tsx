@@ -136,13 +136,28 @@ const tasks = [
   {
     id: 9,
     title: 'Итоги урока, Словарь пользователя',
+    status: 'done' as const,
+    items: [
+      { text: 'GET /lesson/{id}/summary (метрики, стрик, extended_today)', done: true },
+      { text: 'GET /lesson/{id}/current (возобновление урока)', done: true },
+      { text: 'GET /vocabulary/list (фильтрация, поиск, пагинация)', done: true },
+      { text: 'GET /vocabulary/word/{id} (карточка слова)', done: true },
+      { text: 'PATCH /vocabulary/word/{id}/status (смена статуса)', done: true },
+      { text: 'Валидация переходов (active↔ignored, mastered→active)', done: true },
+      { text: 'Идемпотентность смены статуса', done: true },
+    ],
+  },
+  {
+    id: 10,
+    title: 'Админка: Словари, Жалобы, Пользователи, Промпты',
     status: 'pending' as const,
     items: [
-      { text: 'GET /lesson/{id}/summary (итоги урока, стрик)', done: false },
-      { text: 'GET /lesson/{id}/current (возобновление урока)', done: false },
-      { text: 'GET /vocabulary/list (словарь пользователя)', done: false },
-      { text: 'GET /vocabulary/word/{id} (детали слова)', done: false },
-      { text: 'PATCH /vocabulary/word/{id}/status (управление статусом)', done: false },
+      { text: 'POST /admin/dictionaries/import (dry_run)', done: false },
+      { text: 'GET/PATCH /admin/reports (жалобы)', done: false },
+      { text: 'GET /admin/users (список пользователей)', done: false },
+      { text: 'POST /admin/users/{id}/reset-password', done: false },
+      { text: 'GET /admin/db/tables (просмотр БД)', done: false },
+      { text: 'GET/PUT /admin/prompts/{key} (управление промптами)', done: false },
     ],
   },
 ];
@@ -185,10 +200,11 @@ const apiEndpoints = [
   { method: 'GET', path: '/lesson/{id}/exercises/{eid}/result', desc: 'Результат упражнения (идемпотентность)' },
   { method: 'POST', path: '/lesson/exercises/{id}/suggestions/{wid}', desc: 'Подсказка: add/ignore' },
   { method: 'POST', path: '/lesson/exercises/{id}/report', desc: 'Жалоба на предложение' },
-  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 9)' },
-  { method: 'GET', path: '/lesson/{id}/summary', desc: 'Итоги урока (будет в Задаче 9)' },
-  { method: 'GET', path: '/vocabulary/list', desc: 'Словарь пользователя (будет в Задаче 9)' },
-  { method: 'PATCH', path: '/vocabulary/word/{id}/status', desc: 'Изменить статус слова (будет в Задаче 9)' },
+  { method: 'GET', path: '/lesson/{id}/current', desc: 'Текущий урок (возобновление)' },
+  { method: 'GET', path: '/lesson/{id}/summary', desc: 'Итоги урока (метрики, стрик)' },
+  { method: 'GET', path: '/vocabulary/list', desc: 'Словарь пользователя (фильтрация, поиск)' },
+  { method: 'GET', path: '/vocabulary/word/{id}', desc: 'Карточка слова' },
+  { method: 'PATCH', path: '/vocabulary/word/{id}/status', desc: 'Изменить статус слова' },
 ];
 
 const techStack = [
@@ -611,14 +627,14 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 9: Итоги урока и Словарь пользователя
+            Задача 10: Админка
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            Итоги урока с расчётом стрика, возобновление урока, управление словарём
-            пользователя: список слов, детали, изменение статуса (active/mastered/ignored).
+            Импорт словарей с dry_run, управление жалобами, список пользователей,
+            сброс паролей, просмотр БД и управление промптами LLM.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['lesson-summary', 'vocabulary-list', 'word-details', 'status-change'].map((tag) => (
+            {['dictionaries-import', 'reports', 'users', 'db-viewer', 'prompts'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
                 {tag}
               </span>

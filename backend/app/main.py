@@ -22,7 +22,7 @@ from app.db.pool import close_pool, init_pool
 from app.services.llm.gigachat import token_refresh_loop
 
 # Роутеры v1
-from app.api.v1 import admin, auth, dashboard, lessons, onboarding, profile, settings as settings_router
+from app.api.v1 import admin, auth, dashboard, lessons, onboarding, profile, settings as settings_router, vocabulary
 
 
 @asynccontextmanager
@@ -113,6 +113,7 @@ app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(settings_router.router, tags=["Settings"])
 app.include_router(lessons.router, prefix="/lesson", tags=["Lesson"])
+app.include_router(vocabulary.router, prefix="/vocabulary", tags=["Vocabulary"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 

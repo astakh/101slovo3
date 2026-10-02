@@ -484,3 +484,78 @@ async def report_exercise(
         )
 
     return {"status": "ok"}
+
+
+@router.get("/{lesson_id}/summary")
+async def lesson_summary(
+    lesson_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+):
+    """
+    Итоги завершённого урока.
+    
+    Возвращает метрики урока и стрик.
+    """
+    from app.services.lesson_summary import get_lesson_summary
+
+    # Получаем профиль
+    cur = await db.execute(
+        "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
+    )
+    profile = cur.fetchone()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="onboarding_required",
+        )
+
+    try:
+        return await get_lesson_summary(
+            db, user_id=user_id, profile_id=profile["id"], lesson_id=lesson_id
+        )
+    except ValueError as e:
+        error_code = str(e)
+        status_map = {
+            "lesson_not_found": (404, "lesson_not_found"),
+            "lesson_not_completed": (409, "lesson_not_completed"),
+        }
+        http_status, code = status_map.get(error_code, (400, error_code))
+        raise HTTPException(status_code=http_status, detail=code)
+
+
+@router.get("/{lesson_id}/current")
+async def lesson_current(
+    lesson_id: int,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+):
+    """
+    Текущее упражнение для возобновления урока.
+    
+    Возвращает первое невыполненное упражнение.
+    """
+    from app.services.lesson_resume import get_current_exercise
+
+    cur = await db.execute(
+        "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
+    )
+    profile = cur.fetchone()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="onboarding_required",
+        )
+
+    try:
+        return await get_current_exercise(
+            db, profile_id=profile["id"], lesson_id=lesson_id
+        )
+    except ValueError as e:
+        error_code = str(e)
+        status_map = {
+            "lesson_not_found": (404, "lesson_not_found"),
+            "lesson_not_active": (409, "lesson_not_active"),
+        }
+        http_status, code = status_map.get(error_code, (400, error_code))
+        raise HTTPException(status_code=http_status, detail=code)
