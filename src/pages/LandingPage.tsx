@@ -21,6 +21,7 @@ const tasks = [
       { text: 'API-клиент с refresh-токенами', done: true },
       { text: 'Лендинг-страница', done: true },
     ],
+    completedAt: '2026-01-15',
   },
   {
     id: 2,
@@ -37,6 +38,7 @@ const tasks = [
       { text: 'Security: JWT, bcrypt, refresh token hashing', done: true },
       { text: 'Заглушки роутеров v1', done: true },
     ],
+    completedAt: '2026-01-16',
   },
   {
     id: 3,
