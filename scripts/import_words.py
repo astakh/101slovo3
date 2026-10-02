@@ -10,6 +10,7 @@
 """
 
 import json
+import os
 import sys
 import unicodedata
 from pathlib import Path
@@ -18,10 +19,54 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-# Добавляем путь к app для импорта config
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-from app.config import settings
+def load_database_url() -> str:
+    """
+    Загружает DATABASE_URL из файла .env в папке backend/.
+    
+    Returns:
+        Строка подключения к БД
+    
+    Raises:
+        SystemExit: Если .env не найден или DATABASE_URL отсутствует
+    """
+    # Ищем .env в папке backend
+    env_path = Path(__file__).parent.parent / "backend" / ".env"
+    
+    if not env_path.exists():
+        print(f"❌ Файл .env не найден: {env_path}")
+        print("   Создайте файл backend/.env с переменной DATABASE_URL")
+        sys.exit(1)
+    
+    # Парсим .env вручную
+    env_vars = {}
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                env_vars[key] = value
+    
+    database_url = env_vars.get("DATABASE_URL")
+    if not database_url:
+        print("❌ Переменная DATABASE_URL не найдена в backend/.env")
+        sys.exit(1)
+    
+    # Нормализуем URL (убираем +asyncpg, +psycopg)
+    for dialect in ("+asyncpg", "+psycopg", "+pg8000", "+aiopg"):
+        database_url = database_url.replace(dialect, "")
+    
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    return database_url
+
+
+DATABASE_URL = load_database_url()
 
 
 def compute_lemma_key(lemma: str) -> str:
@@ -133,7 +178,7 @@ def import_words(json_file: str, dictionary_id: int) -> None:
     print("\n🔌 Подключение к базе данных...")
     
     try:
-        with psycopg.connect(settings.DATABASE_URL, row_factory=dict_row) as conn:
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as conn:
             print("✅ Подключение установлено")
             
             # Статистика
