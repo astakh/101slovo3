@@ -41,13 +41,29 @@ const tasks = [
   {
     id: 3,
     title: 'Аутентификация и Онбординг',
+    status: 'done' as const,
+    items: [
+      { text: 'POST /auth/register (bcrypt, event signup)', done: true },
+      { text: 'POST /auth/login (rate limit, verify)', done: true },
+      { text: 'POST /auth/refresh (ротация, family_id, защита от кражи)', done: true },
+      { text: 'POST /auth/logout (отзыв токена)', done: true },
+      { text: 'GET /auth/me (профиль пользователя)', done: true },
+      { text: 'POST /onboarding/complete (timezone, level, profile)', done: true },
+      { text: 'GET /onboarding/dictionaries', done: true },
+      { text: 'In-memory Rate Limiter (IP + email)', done: true },
+      { text: 'httpOnly cookie для refresh-токена', done: true },
+    ],
+  },
+  {
+    id: 4,
+    title: 'Dashboard, Профиль и Настройки',
     status: 'pending' as const,
     items: [
-      { text: 'POST /auth/register', done: false },
-      { text: 'POST /auth/login', done: false },
-      { text: 'POST /auth/refresh (ротация, family_id)', done: false },
-      { text: 'POST /auth/logout', done: false },
-      { text: 'POST /onboarding/complete', done: false },
+      { text: 'GET /dashboard/summary', done: false },
+      { text: 'GET /profile/stats', done: false },
+      { text: 'GET /learning-profile', done: false },
+      { text: 'PATCH /learning-profile', done: false },
+      { text: 'PATCH /settings/timezone (лимит 7 дней)', done: false },
     ],
   },
 ];
@@ -70,10 +86,10 @@ const dbTables = [
 ];
 
 const apiEndpoints = [
-  { method: 'POST', path: '/auth/register', desc: 'Регистрация' },
-  { method: 'POST', path: '/auth/login', desc: 'Вход' },
-  { method: 'POST', path: '/auth/refresh', desc: 'Обновление токенов' },
-  { method: 'POST', path: '/auth/logout', desc: 'Выход' },
+  { method: 'POST', path: '/auth/register', desc: 'Регистрация (bcrypt, event signup)' },
+  { method: 'POST', path: '/auth/login', desc: 'Вход (rate limit, verify)' },
+  { method: 'POST', path: '/auth/refresh', desc: 'Обновление токенов (ротация, family_id)' },
+  { method: 'POST', path: '/auth/logout', desc: 'Выход (отзыв refresh-токена)' },
   { method: 'GET', path: '/auth/me', desc: 'Профиль пользователя' },
   { method: 'POST', path: '/onboarding/complete', desc: 'Завершение онбординга' },
   { method: 'GET', path: '/onboarding/dictionaries', desc: 'Список словарей' },
@@ -506,17 +522,17 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 3: Аутентификация и Онбординг
+            Задача 4: Dashboard, Профиль и Настройки
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            POST /auth/register, /auth/login, /auth/refresh, /auth/logout.
-            bcrypt для паролей, JWT access-токены, refresh-токены с ротацией и family_id.
-            POST /onboarding/complete.
+            GET /dashboard/summary, GET /profile/stats, GET/PATCH /learning-profile.
+            Сложные SQL-запросы для подсчёта стрика, сводки слов и точности.
+            Смена часового пояса с ограничением в 7 дней.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['register', 'login', 'refresh', 'logout', 'onboarding'].map((tag) => (
+            {['dashboard/summary', 'profile/stats', 'learning-profile', 'settings/timezone'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
-                /auth/{tag}
+                /{tag}
               </span>
             ))}
           </div>
