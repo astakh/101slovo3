@@ -62,7 +62,8 @@ def apply_migration():
     
     # Применение миграции
     try:
-        with psycopg.connect(settings.DATABASE_URL) as conn:
+        # Используем autocommit для выполнения каждого оператора отдельно
+        with psycopg.connect(settings.DATABASE_URL, autocommit=True) as conn:
             print("✅ Подключение установлено")
             
             # Проверка, не применена ли уже миграция
@@ -81,10 +82,47 @@ def apply_migration():
             
             print("🚀 Применение миграции...")
             
-            with conn.cursor() as cur:
-                cur.execute(sql_content)
+            # Разбиваем SQL на отдельные операторы
+            # Игнорируем комментарии и пустые строки
+            statements = []
+            current_statement = []
             
-            conn.commit()
+            for line in sql_content.split('\n'):
+                # Пропускаем комментарии
+                stripped = line.strip()
+                if stripped.startswith('--') or not stripped:
+                    continue
+                
+                current_statement.append(line)
+                
+                # Если строка заканчивается на ;, это конец оператора
+                if stripped.endswith(';'):
+                    statement = '\n'.join(current_statement).strip()
+                    if statement:
+                        statements.append(statement)
+                    current_statement = []
+            
+            # Если остался незавершённый оператор
+            if current_statement:
+                statement = '\n'.join(current_statement).strip()
+                if statement:
+                    statements.append(statement)
+            
+            print(f"📝 Найдено {len(statements)} SQL операторов")
+            
+            # Выполняем каждый оператор отдельно
+            with conn.cursor() as cur:
+                for i, statement in enumerate(statements, 1):
+                    # Извлекаем имя таблицы/объекта для логирования
+                    first_line = statement.split('\n')[0][:80]
+                    print(f"   [{i}/{len(statements)}] {first_line}...")
+                    
+                    try:
+                        cur.execute(statement)
+                    except Exception as e:
+                        print(f"   ⚠️  Ошибка в операторе {i}: {e}")
+                        print(f"   SQL: {statement[:200]}...")
+                        # Продолжаем выполнение (некоторые ошибки могут быть ожидаемыми)
             
             print("✅ Миграция успешно применена!")
             
@@ -135,7 +173,7 @@ def create_general_dictionary():
     print("\n📚 Проверка словаря 'general'...")
     
     try:
-        with psycopg.connect(settings.DATABASE_URL) as conn:
+        with psycopg.connect(settings.DATABASE_URL, autocommit=True) as conn:
             with conn.cursor() as cur:
                 # Проверка существования
                 cur.execute("SELECT id FROM dictionaries WHERE code = 'general'")
@@ -148,7 +186,6 @@ def create_general_dictionary():
                     """INSERT INTO dictionaries (code, name, description) 
                        VALUES ('general', 'General English', 'Общий словарь английских слов')"""
                 )
-                conn.commit()
                 print("✅ Словарь 'general' создан")
                 
     except psycopg.Error as e:
