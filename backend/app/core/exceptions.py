@@ -60,11 +60,43 @@ class RateLimitError(AppError):
         super().__init__(detail=detail, status_code=429, code="rate_limited")
 
 
-class LlmError(AppError):
-    """Ошибка при вызове LLM."""
+# ─── LLM Exceptions ───────────────────────────────────────────────────
 
-    def __init__(self, detail: str = "LLM service error"):
-        super().__init__(detail=detail, status_code=502, code="llm_error")
+class LlmError(Exception):
+    """Базовое исключение для ошибок LLM."""
+
+    def __init__(self, message: str, error_code: str | None = None):
+        self.message = message
+        self.error_code = error_code
+        super().__init__(message)
+
+
+class LlmUnavailable(LlmError):
+    """503 llm_unavailable"""
+
+    def __init__(self, message: str = "LLM service unavailable"):
+        super().__init__(message, "llm_unavailable")
+
+
+class LlmQuotaExceeded(LlmError):
+    """503 llm_unavailable (квота исчерпана)"""
+
+    def __init__(self, message: str = "LLM quota exceeded"):
+        super().__init__(message, "llm_unavailable")
+
+
+class LlmInvalidResponse(LlmError):
+    """503 llm_invalid_response"""
+
+    def __init__(self, message: str = "Invalid LLM response"):
+        super().__init__(message, "llm_invalid_response")
+
+
+class LlmRefused(LlmError):
+    """422 llm_refused"""
+
+    def __init__(self, message: str = "LLM refused to process"):
+        super().__init__(message, "llm_refused")
 
 
 # ─── Exception Handlers ───────────────────────────────────────────────

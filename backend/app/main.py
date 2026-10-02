@@ -3,14 +3,23 @@
 Lifespan, middleware, роутеры.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.core.exceptions import register_exception_handlers
+from app.core.exceptions import (
+    LlmInvalidResponse,
+    LlmQuotaExceeded,
+    LlmRefused,
+    LlmUnavailable,
+    register_exception_handlers,
+)
 from app.db.pool import close_pool, init_pool
+from app.services.llm.gigachat import token_refresh_loop
 
 # Роутеры v1
 from app.api.v1 import admin, auth, dashboard, lessons, onboarding, profile, settings as settings_router
@@ -20,13 +29,27 @@ from app.api.v1 import admin, auth, dashboard, lessons, onboarding, profile, set
 async def lifespan(app: FastAPI):
     """
     Жизненный цикл приложения.
-    Startup: инициализация пула БД.
-    Shutdown: закрытие пула.
+    Startup: инициализация пула БД, запуск фоновой задачи обновления токена GigaChat.
+    Shutdown: отмена фоновой задачи, закрытие пула.
     """
     # ── Startup ──────────────────────────────────────────────────────
     await init_pool()
+    
+    # Запуск фоновой задачи обновления токена GigaChat
+    refresh_task = asyncio.create_task(token_refresh_loop())
+    logger_info = __import__("logging").getLogger(__name__)
+    logger_info.info("GigaChat token refresh loop started")
+    
     yield
+    
     # ── Shutdown ─────────────────────────────────────────────────────
+    refresh_task.cancel()
+    try:
+        await refresh_task
+    except asyncio.CancelledError:
+        pass
+    logger_info.info("GigaChat token refresh loop stopped")
+    
     await close_pool()
 
 
@@ -48,6 +71,40 @@ app.add_middleware(
 
 # ─── Exception Handlers ───────────────────────────────────────────────
 register_exception_handlers(app)
+
+
+# ─── LLM Exception Handlers ──────────────────────────────────────────
+@app.exception_handler(LlmUnavailable)
+async def llm_unavailable_handler(request: Request, exc: LlmUnavailable):
+    return JSONResponse(
+        status_code=503,
+        content={"error": {"code": "llm_unavailable", "message": exc.message}},
+    )
+
+
+@app.exception_handler(LlmQuotaExceeded)
+async def llm_quota_handler(request: Request, exc: LlmQuotaExceeded):
+    return JSONResponse(
+        status_code=503,
+        content={"error": {"code": "llm_unavailable", "message": exc.message}},
+    )
+
+
+@app.exception_handler(LlmInvalidResponse)
+async def llm_invalid_response_handler(request: Request, exc: LlmInvalidResponse):
+    return JSONResponse(
+        status_code=503,
+        content={"error": {"code": "llm_invalid_response", "message": exc.message}},
+    )
+
+
+@app.exception_handler(LlmRefused)
+async def llm_refused_handler(request: Request, exc: LlmRefused):
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "llm_refused", "message": exc.message}},
+    )
+
 
 # ─── Routers ──────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])

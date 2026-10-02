@@ -83,15 +83,30 @@ const tasks = [
   },
   {
     id: 6,
-    title: 'Клиент GigaChat и Старт урока',
+    title: 'Клиент GigaChat (LLM-интеграция)',
+    status: 'done' as const,
+    items: [
+      { text: 'GigaTokenManager с OAuth и asyncio.Lock', done: true },
+      { text: 'Фоновая задача token_refresh_loop', done: true },
+      { text: 'GigaChatClient.chat() (Слой A) с семафором', done: true },
+      { text: 'GigaChatClient.chat_json() (Слой B) с извлечением JSON', done: true },
+      { text: 'Обработка ошибок: 401, 429, 402, 400, 5xx', done: true },
+      { text: 'Логирование вызовов в llm_calls', done: true },
+      { text: 'Хелперы generate_sentences() и evaluate_translation()', done: true },
+      { text: 'Глобальные обработчики LLM-исключений', done: true },
+    ],
+  },
+  {
+    id: 7,
+    title: 'Старт урока (POST /lesson/start)',
     status: 'pending' as const,
     items: [
-      { text: 'OAuth-авторизация в GigaChat', done: false },
-      { text: 'Хранение токена в памяти, фоновое обновление', done: false },
-      { text: 'Семафоры для параллелизма', done: false },
-      { text: 'Обработка ошибок (401, 429, 5xx, 402)', done: false },
-      { text: 'Логирование вызовов в llm_calls', done: false },
-      { text: 'Алгоритм 5.4: Старт урока (advisory locks)', done: false },
+      { text: 'Алгоритм 5.4: идемпотентность через Idempotency-Key', done: false },
+      { text: 'Advisory locks для предотвращения гонок', done: false },
+      { text: 'Сверка состава слов и кластеризация', done: false },
+      { text: 'Вызов LLM для генерации предложений', done: false },
+      { text: 'Валидация ответа и частичные повторы', done: false },
+      { text: 'Финальная транзакция записи урока', done: false },
     ],
   },
 ];
@@ -129,12 +144,12 @@ const apiEndpoints = [
   { method: 'PATCH', path: '/settings/timezone', desc: 'Смена часового пояса (лимит 7 дней)' },
   { method: 'POST', path: '/lesson/preview', desc: 'Подбор слов для урока (алгоритм 5.2)' },
   { method: 'POST', path: '/lesson/new-word/decline', desc: 'Отказ от нового слова (алгоритм 5.3)' },
-  { method: 'POST', path: '/lesson/start', desc: 'Начать урок (будет в Задаче 6)' },
-  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 6)' },
-  { method: 'POST', path: '/lesson/{id}/complete', desc: 'Завершить урок (будет в Задаче 7)' },
-  { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод (будет в Задаче 7)' },
-  { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю (будет в Задаче 7)' },
-  { method: 'POST', path: '/exercises/report', desc: 'Жалоба на предложение (будет в Задаче 8)' },
+  { method: 'POST', path: '/lesson/start', desc: 'Начать урок (будет в Задаче 7)' },
+  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 7)' },
+  { method: 'POST', path: '/lesson/{id}/complete', desc: 'Завершить урок (будет в Задаче 8)' },
+  { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод (будет в Задаче 8)' },
+  { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю (будет в Задаче 8)' },
+  { method: 'POST', path: '/exercises/report', desc: 'Жалоба на предложение (будет в Задаче 9)' },
 ];
 
 const techStack = [
@@ -557,15 +572,15 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 6: Клиент GigaChat и Старт урока
+            Задача 7: Старт урока (POST /lesson/start)
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            Интеграция с LLM GigaChat: OAuth-авторизация, хранение токена в памяти,
-            фоновое обновление, семафоры для параллелизма, обработка ошибок.
-            Старт урока с advisory locks и генерацией предложений.
+            Полный алгоритм 5.4: идемпотентность через Idempotency-Key, advisory locks,
+            сверка состава, кластеризация, вызов LLM для генерации предложений,
+            валидация ответа и финальная транзакция записи урока.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['gigachat-client', 'oauth-auth', 'llm-logging', 'start-lesson'].map((tag) => (
+            {['idempotency-key', 'advisory-locks', 'clustering', 'llm-generation'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
                 {tag}
               </span>
