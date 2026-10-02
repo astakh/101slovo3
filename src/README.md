@@ -62,21 +62,31 @@ npm run build
 npm run preview
 ```
 
-## API интеграция
+## Авторизация
 
-Сейчас формы авторизации используют заглушки (имитация API вызова).
+Реализована полная система авторизации через контекст `AuthContext`.
 
-**TODO:** Подключить реальные эндпоинты:
-- `POST /auth/register` — регистрация
-- `POST /auth/login` — вход
-- `POST /auth/refresh` — обновление токена
-- `POST /auth/logout` — выход
+### Как это работает:
 
-Пример интеграции:
+1. **Регистрация/Вход** — пользователь заполняет форму в модальном окне
+2. **Сохранение токена** — после успешной авторизации токен сохраняется в `localStorage`
+3. **Перенаправление** — пользователь автоматически перенаправляется на `/dashboard`
+4. **Защищённые маршруты** — компонент `ProtectedRoute` проверяет наличие токена
+
+### Текущая реализация (заглушка):
+
+Сейчас используется имитация API:
+- Принимается любой email с паролем >= 8 символов
+- Токен генерируется как `mock_token_{timestamp}`
+- Данные пользователя сохраняются в контексте
+
+### Подключение реального API:
+
+В `src/contexts/AuthContext.tsx` замените заглушки на реальные вызовы:
+
 ```typescript
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
+const login = async (email: string, password: string) => {
+  setLoading(true);
   try {
     const response = await fetch('http://localhost:8000/auth/login', {
       method: 'POST',
@@ -84,19 +94,39 @@ const handleSubmit = async (e: React.FormEvent) => {
       body: JSON.stringify({ email, password }),
     });
     
-    if (!response.ok) throw new Error('Ошибка авторизации');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка авторизации');
+    }
     
     const data = await response.json();
-    // Сохранить токены
     localStorage.setItem('access_token', data.access_token);
     
-    // Перенаправить на dashboard
-    window.location.href = '/dashboard';
-  } catch (err) {
-    setError('Неверный email или пароль');
+    // Получить данные пользователя
+    const userResponse = await fetch('http://localhost:8000/auth/me', {
+      headers: { 'Authorization': `Bearer ${data.access_token}` },
+    });
+    const userData = await userResponse.json();
+    setUser(userData);
+  } catch (error) {
+    throw error;
+  } finally {
+    setLoading(false);
   }
 };
 ```
+
+### Маршруты:
+
+- `/` — главная страница (лендинг)
+- `/dashboard` — панель пользователя (защищённый маршрут)
+
+### Компоненты:
+
+- `AuthProvider` — оборачивает приложение и предоставляет контекст авторизации
+- `ProtectedRoute` — защищает маршруты от неавторизованных пользователей
+- `AuthModal` — модальное окно для входа/регистрации
+- `useAuth()` — хук для доступа к контексту авторизации
 
 ## Стили
 

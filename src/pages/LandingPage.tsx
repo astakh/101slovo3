@@ -5,6 +5,7 @@ import {
   CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import AuthModal from '../components/AuthModal';
+import { useAuth } from '../contexts/AuthContext';
 
 // ========================
 // Components
@@ -12,6 +13,7 @@ import AuthModal from '../components/AuthModal';
 
 function Header({ onLoginClick, onRegisterClick }: { onLoginClick: () => void; onRegisterClick: () => void }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-100">
@@ -27,18 +29,36 @@ function Header({ onLoginClick, onRegisterClick }: { onLoginClick: () => void; o
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Возможности</a>
             <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">Как это работает</a>
-            <button 
-              onClick={onLoginClick}
-              className="px-4 py-2 text-indigo-600 font-medium hover:bg-indigo-50 rounded-lg transition-colors"
-            >
-              Войти
-            </button>
-            <button 
-              onClick={onRegisterClick}
-              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Регистрация
-            </button>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600">{user?.email}</span>
+                <button 
+                  onClick={() => {
+                    logout();
+                    window.location.href = '/';
+                  }}
+                  className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Выйти
+                </button>
+              </div>
+            ) : (
+              <>
+                <button 
+                  onClick={onLoginClick}
+                  className="px-4 py-2 text-indigo-600 font-medium hover:bg-indigo-50 rounded-lg transition-colors"
+                >
+                  Войти
+                </button>
+                <button 
+                  onClick={onRegisterClick}
+                  className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Регистрация
+                </button>
+              </>
+            )}
           </nav>
 
           <button
@@ -62,24 +82,39 @@ function Header({ onLoginClick, onRegisterClick }: { onLoginClick: () => void; o
               <a href="#features" className="block text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Возможности</a>
               <a href="#how-it-works" className="block text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Как это работает</a>
               <div className="pt-3 border-t border-gray-100 flex gap-3">
-                <button 
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onLoginClick();
-                  }}
-                  className="flex-1 px-4 py-2 text-indigo-600 font-medium border border-indigo-200 rounded-lg"
-                >
-                  Войти
-                </button>
-                <button 
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onRegisterClick();
-                  }}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg"
-                >
-                  Регистрация
-                </button>
+                {isAuthenticated ? (
+                  <button 
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      logout();
+                      window.location.href = '/';
+                    }}
+                    className="flex-1 px-4 py-2 text-gray-600 font-medium border border-gray-200 rounded-lg"
+                  >
+                    Выйти
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        onLoginClick();
+                      }}
+                      className="flex-1 px-4 py-2 text-indigo-600 font-medium border border-indigo-200 rounded-lg"
+                    >
+                      Войти
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        onRegisterClick();
+                      }}
+                      className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg"
+                    >
+                      Регистрация
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

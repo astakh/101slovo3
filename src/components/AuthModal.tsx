@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -13,8 +15,10 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }: AuthM
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const { login, register, loading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,24 +40,18 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }: AuthM
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      // TODO: Здесь будет реальный API вызов
-      // const response = await fetch('/api/auth/login', { ... })
+      if (mode === 'login') {
+        await login(email, password);
+      } else {
+        await register(email, password);
+      }
       
-      // Имитация API вызова
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log(`${mode === 'login' ? 'Вход' : 'Регистрация'}:`, { email, password });
-      
-      // Успешная авторизация
+      // Успешная авторизация - закрываем модалку и перенаправляем
       onClose();
-      // TODO: Перенаправление на dashboard или обновление auth state
+      navigate('/dashboard');
     } catch (err) {
-      setError('Произошла ошибка. Попробуйте ещё раз.');
-    } finally {
-      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Произошла ошибка. Попробуйте ещё раз.');
     }
   };
 
@@ -172,10 +170,10 @@ export default function AuthModal({ isOpen, onClose, mode, onSwitchMode }: AuthM
                 {/* Submit button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={loading}
                   className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <span className="flex items-center justify-center gap-2">
                       <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
