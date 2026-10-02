@@ -70,13 +70,28 @@ const tasks = [
   },
   {
     id: 5,
-    title: 'Урок: Подбор слов, Отказ, Старт урока',
+    title: 'Подбор слов (Preview) и Отказ от слова (Decline)',
+    status: 'done' as const,
+    items: [
+      { text: 'Детерминированное ранжирование через sha256', done: true },
+      { text: 'Кластеризация слов для групп упражнений', done: true },
+      { text: 'POST /lesson/preview (алгоритм 5.2)', done: true },
+      { text: 'Подбор due-слов и новых слов с учётом уровня', done: true },
+      { text: 'POST /lesson/new-word/decline (алгоритм 5.3)', done: true },
+      { text: 'Идемпотентность отказа от слова', done: true },
+    ],
+  },
+  {
+    id: 6,
+    title: 'Клиент GigaChat и Старт урока',
     status: 'pending' as const,
     items: [
-      { text: 'Алгоритм 5.2: Подбор слов (sha256 ранжирование)', done: false },
-      { text: 'Алгоритм 5.3: Отказ от слова', done: false },
-      { text: 'Алгоритм 5.4: Старт урока (advisory locks, идемпотентность)', done: false },
-      { text: 'Интеграция с GigaChat (генерация предложений)', done: false },
+      { text: 'OAuth-авторизация в GigaChat', done: false },
+      { text: 'Хранение токена в памяти, фоновое обновление', done: false },
+      { text: 'Семафоры для параллелизма', done: false },
+      { text: 'Обработка ошибок (401, 429, 5xx, 402)', done: false },
+      { text: 'Логирование вызовов в llm_calls', done: false },
+      { text: 'Алгоритм 5.4: Старт урока (advisory locks)', done: false },
     ],
   },
 ];
@@ -112,12 +127,14 @@ const apiEndpoints = [
   { method: 'PATCH', path: '/learning-profile', desc: 'Обновление профиля' },
   { method: 'GET', path: '/dictionaries', desc: 'Список словарей с количеством слов' },
   { method: 'PATCH', path: '/settings/timezone', desc: 'Смена часового пояса (лимит 7 дней)' },
-  { method: 'POST', path: '/lessons/start', desc: 'Начать урок' },
-  { method: 'GET', path: '/lessons/current', desc: 'Текущий урок' },
-  { method: 'POST', path: '/lessons/{id}/complete', desc: 'Завершить урок' },
-  { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод' },
-  { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю' },
-  { method: 'POST', path: '/exercises/report', desc: 'Жалоба на предложение' },
+  { method: 'POST', path: '/lesson/preview', desc: 'Подбор слов для урока (алгоритм 5.2)' },
+  { method: 'POST', path: '/lesson/new-word/decline', desc: 'Отказ от нового слова (алгоритм 5.3)' },
+  { method: 'POST', path: '/lesson/start', desc: 'Начать урок (будет в Задаче 6)' },
+  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 6)' },
+  { method: 'POST', path: '/lesson/{id}/complete', desc: 'Завершить урок (будет в Задаче 7)' },
+  { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод (будет в Задаче 7)' },
+  { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю (будет в Задаче 7)' },
+  { method: 'POST', path: '/exercises/report', desc: 'Жалоба на предложение (будет в Задаче 8)' },
 ];
 
 const techStack = [
@@ -540,14 +557,15 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 5: Основной цикл урока
+            Задача 6: Клиент GigaChat и Старт урока
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            Подбор слов с детерминированным ранжированием (sha256), отказ от слова,
-            старт урока с advisory locks и идемпотентностью. Генерация предложений через GigaChat.
+            Интеграция с LLM GigaChat: OAuth-авторизация, хранение токена в памяти,
+            фоновое обновление, семафоры для параллелизма, обработка ошибок.
+            Старт урока с advisory locks и генерацией предложений.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['word-selection', 'decline-word', 'start-lesson', 'gigachat-integration'].map((tag) => (
+            {['gigachat-client', 'oauth-auth', 'llm-logging', 'start-lesson'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
                 {tag}
               </span>

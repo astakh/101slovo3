@@ -55,7 +55,7 @@ app.include_router(onboarding.router, prefix="/onboarding", tags=["Onboarding"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(profile.router, prefix="/profile", tags=["Profile"])
 app.include_router(settings_router.router, tags=["Settings"])
-app.include_router(lessons.router, prefix="/lessons", tags=["Lessons"])
+app.include_router(lessons.router, prefix="/lesson", tags=["Lesson"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 
