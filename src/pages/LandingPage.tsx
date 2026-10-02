@@ -57,13 +57,26 @@ const tasks = [
   {
     id: 4,
     title: 'Dashboard, Профиль и Настройки',
+    status: 'done' as const,
+    items: [
+      { text: 'GET /dashboard/summary (CTA, resume, resets_at)', done: true },
+      { text: 'Алгоритм стрика (п. 5.6 ТЗ)', done: true },
+      { text: 'GET /profile/stats (heatmap, accuracy)', done: true },
+      { text: 'GET /learning-profile', done: true },
+      { text: 'PATCH /learning-profile', done: true },
+      { text: 'GET /dictionaries (с количеством слов)', done: true },
+      { text: 'PATCH /settings/timezone (лимит 7 дней, идемпотентность)', done: true },
+    ],
+  },
+  {
+    id: 5,
+    title: 'Урок: Подбор слов, Отказ, Старт урока',
     status: 'pending' as const,
     items: [
-      { text: 'GET /dashboard/summary', done: false },
-      { text: 'GET /profile/stats', done: false },
-      { text: 'GET /learning-profile', done: false },
-      { text: 'PATCH /learning-profile', done: false },
-      { text: 'PATCH /settings/timezone (лимит 7 дней)', done: false },
+      { text: 'Алгоритм 5.2: Подбор слов (sha256 ранжирование)', done: false },
+      { text: 'Алгоритм 5.3: Отказ от слова', done: false },
+      { text: 'Алгоритм 5.4: Старт урока (advisory locks, идемпотентность)', done: false },
+      { text: 'Интеграция с GigaChat (генерация предложений)', done: false },
     ],
   },
 ];
@@ -93,13 +106,18 @@ const apiEndpoints = [
   { method: 'GET', path: '/auth/me', desc: 'Профиль пользователя' },
   { method: 'POST', path: '/onboarding/complete', desc: 'Завершение онбординга' },
   { method: 'GET', path: '/onboarding/dictionaries', desc: 'Список словарей' },
+  { method: 'GET', path: '/dashboard/summary', desc: 'Сводка (CTA, resume, streak)' },
+  { method: 'GET', path: '/profile/stats', desc: 'Статистика (heatmap, accuracy)' },
+  { method: 'GET', path: '/learning-profile', desc: 'Профиль обучения' },
+  { method: 'PATCH', path: '/learning-profile', desc: 'Обновление профиля' },
+  { method: 'GET', path: '/dictionaries', desc: 'Список словарей с количеством слов' },
+  { method: 'PATCH', path: '/settings/timezone', desc: 'Смена часового пояса (лимит 7 дней)' },
   { method: 'POST', path: '/lessons/start', desc: 'Начать урок' },
   { method: 'GET', path: '/lessons/current', desc: 'Текущий урок' },
   { method: 'POST', path: '/lessons/{id}/complete', desc: 'Завершить урок' },
   { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод' },
   { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю' },
   { method: 'POST', path: '/exercises/report', desc: 'Жалоба на предложение' },
-  { method: 'GET', path: '/stats/dashboard', desc: 'Статистика' },
 ];
 
 const techStack = [
@@ -522,17 +540,16 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 4: Dashboard, Профиль и Настройки
+            Задача 5: Основной цикл урока
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            GET /dashboard/summary, GET /profile/stats, GET/PATCH /learning-profile.
-            Сложные SQL-запросы для подсчёта стрика, сводки слов и точности.
-            Смена часового пояса с ограничением в 7 дней.
+            Подбор слов с детерминированным ранжированием (sha256), отказ от слова,
+            старт урока с advisory locks и идемпотентностью. Генерация предложений через GigaChat.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['dashboard/summary', 'profile/stats', 'learning-profile', 'settings/timezone'].map((tag) => (
+            {['word-selection', 'decline-word', 'start-lesson', 'gigachat-integration'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
-                /{tag}
+                {tag}
               </span>
             ))}
           </div>

@@ -9,11 +9,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.db.pool import init_pool, close_pool
 from app.core.exceptions import register_exception_handlers
+from app.db.pool import close_pool, init_pool
 
 # Роутеры v1
-from app.api.v1 import auth, lessons, dashboard, onboarding, admin
+from app.api.v1 import admin, auth, dashboard, lessons, onboarding, profile, settings as settings_router
 
 
 @asynccontextmanager
@@ -52,8 +52,10 @@ register_exception_handlers(app)
 # ─── Routers ──────────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(onboarding.router, prefix="/onboarding", tags=["Onboarding"])
-app.include_router(lessons.router, prefix="/lessons", tags=["Lessons"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(profile.router, prefix="/profile", tags=["Profile"])
+app.include_router(settings_router.router, tags=["Settings"])
+app.include_router(lessons.router, prefix="/lessons", tags=["Lessons"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 
