@@ -77,3 +77,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+# Word JSON files (generated, not example)
+scripts/words_*.json
+!scripts/example_words.json

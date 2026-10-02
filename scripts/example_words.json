@@ -1,0 +1,62 @@
+[
+  {
+    "lemma": "book",
+    "pos": "noun",
+    "level": "A1",
+    "translations": ["книга", "книжка"]
+  },
+  {
+    "lemma": "run",
+    "pos": "verb",
+    "level": "A1",
+    "translations": ["бежать", "бегать", "пробегать"]
+  },
+  {
+    "lemma": "beautiful",
+    "pos": "adj",
+    "level": "A2",
+    "translations": ["красивый", "прекрасный", "красивая"]
+  },
+  {
+    "lemma": "quickly",
+    "pos": "adv",
+    "level": "A2",
+    "translations": ["быстро", "скоро"]
+  },
+  {
+    "lemma": "however",
+    "pos": "adv",
+    "level": "B1",
+    "translations": ["однако", "тем не менее"]
+  },
+  {
+    "lemma": "computer",
+    "pos": "noun",
+    "level": "A1",
+    "translations": ["компьютер", "ЭВМ"]
+  },
+  {
+    "lemma": "write",
+    "pos": "verb",
+    "level": "A1",
+    "translations": ["писать", "записывать"]
+  },
+  {
+    "lemma": "important",
+    "pos": "adj",
+    "level": "A2",
+    "translations": ["важный", "значимый", "существенный"]
+  },
+  {
+    "lemma": "always",
+    "pos": "adv",
+    "level": "A1",
+    "translations": ["всегда", "вечно"]
+  },
+  {
+    "lemma": "decision",
+    "pos": "noun",
+    "level": "B1",
+    "translations": ["решение", "постановление"]
+  }
+]
