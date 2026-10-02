@@ -1,16 +1,18 @@
 """
 101slovo — Роутер уроков.
-Preview (подбор слов) и Decline (отказ от слова).
+Preview (подбор слов), Decline (отказ от слова) и Start (старт урока).
 """
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 
 from app.api.deps import get_current_user_id, get_db
+from app.schemas.lesson_start import LessonStartRequest, LessonStartResponse
 from app.services.lesson_preview import get_preview_data
+from app.services.lesson_start import start_lesson
 
 router = APIRouter()
 
@@ -147,3 +149,71 @@ async def decline_new_word(
 
     # 7. Пересчитываем preview
     return await get_preview_data(db, profile_id)
+
+
+@router.post("/start", response_model=LessonStartResponse)
+async def lesson_start(
+    req: LessonStartRequest,
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+    idempotency_key: str = Header(alias="Idempotency-Key"),
+):
+    """
+    Старт урока (алгоритм 5.4).
+    
+    Этапы:
+    1. Валидация идемпотентности через Idempotency-Key
+    2. Предпроверки (онбординг, in_progress, лимит)
+    3. Advisory lock для предотвращения параллельного старта
+    4. Сверка состава слов с preview
+    5. Кластеризация слов в группы
+    6-8. Генерация предложений через LLM с валидацией и повторами
+    9. Финальная транзакция записи урока и упражнений
+    10. Возврат информации о созданном уроке
+    
+    Идемпотентность: повторный запрос с тем же Idempotency-Key возвращает существующий урок.
+    """
+    # Проверяем онбординг и получаем профиль
+    cur = await db.execute(
+        """SELECT u.is_onboarded, lp.id as profile_id 
+           FROM users u 
+           LEFT JOIN learning_profiles lp ON lp.user_id = u.id 
+           WHERE u.id = %s""",
+        [user_id],
+    )
+    row = cur.fetchone()
+    if not row or not row["is_onboarded"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="onboarding_required",
+        )
+    if not row["profile_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="onboarding_required",
+        )
+
+    try:
+        result = await start_lesson(
+            db,
+            user_id=user_id,
+            profile_id=row["profile_id"],
+            word_ids=req.word_ids,
+            idempotency_key=idempotency_key,
+        )
+        return result
+    except ValueError as e:
+        error_code = str(e)
+        status_map = {
+            "invalid_idempotency_key": (422, "invalid_idempotency_key"),
+            "lesson_completed": (409, "lesson_completed"),
+            "resume_available": (409, "resume_available"),
+            "limit_reached": (409, "limit_reached"),
+            "start_in_progress": (409, "start_in_progress"),
+            "preview_outdated": (409, "preview_outdated"),
+            "words_changed": (409, "preview_outdated"),
+            "idempotency_key_taken": (409, "start_in_progress"),
+            "profile_not_found": (404, "profile_not_found"),
+        }
+        http_status, code = status_map.get(error_code, (400, error_code))
+        raise HTTPException(status_code=http_status, detail=code)

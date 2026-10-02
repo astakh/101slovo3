@@ -99,14 +99,32 @@ const tasks = [
   {
     id: 7,
     title: 'Старт урока (POST /lesson/start)',
+    status: 'done' as const,
+    items: [
+      { text: 'Валидация Idempotency-Key (1-128 символов)', done: true },
+      { text: 'Идемпотентность: повторный запрос возвращает существующий урок', done: true },
+      { text: 'Предпроверки (онбординг, in_progress, лимит)', done: true },
+      { text: 'pg_try_advisory_lock для защиты от параллельного старта', done: true },
+      { text: 'Сверка состава слов с preview', done: true },
+      { text: 'Кластеризация слов в группы', done: true },
+      { text: 'Генерация предложений через LLM', done: true },
+      { text: 'Строгая валидация ответа (10 правил из п. 5.4 шаг 7)', done: true },
+      { text: 'Частичные повторы (до 2 раз)', done: true },
+      { text: 'Финальная транзакция записи (урок, упражнения, user_words)', done: true },
+      { text: 'События lesson_started и new_word_accepted', done: true },
+    ],
+  },
+  {
+    id: 8,
+    title: 'Проверка упражнения и Разбор',
     status: 'pending' as const,
     items: [
-      { text: 'Алгоритм 5.4: идемпотентность через Idempotency-Key', done: false },
-      { text: 'Advisory locks для предотвращения гонок', done: false },
-      { text: 'Сверка состава слов и кластеризация', done: false },
-      { text: 'Вызов LLM для генерации предложений', done: false },
-      { text: 'Валидация ответа и частичные повторы', done: false },
-      { text: 'Финальная транзакция записи урока', done: false },
+      { text: 'POST /lesson/evaluate (оценка перевода через LLM)', done: false },
+      { text: 'Ветка "Не знаю" (dont_know)', done: false },
+      { text: 'Валидация ответа LLM', done: false },
+      { text: 'Обновление SRS (stage, due_lesson_number)', done: false },
+      { text: 'Автозавершение урока', done: false },
+      { text: 'Подсказки новых слов (suggested_words)', done: false },
     ],
   },
 ];
@@ -144,8 +162,8 @@ const apiEndpoints = [
   { method: 'PATCH', path: '/settings/timezone', desc: 'Смена часового пояса (лимит 7 дней)' },
   { method: 'POST', path: '/lesson/preview', desc: 'Подбор слов для урока (алгоритм 5.2)' },
   { method: 'POST', path: '/lesson/new-word/decline', desc: 'Отказ от нового слова (алгоритм 5.3)' },
-  { method: 'POST', path: '/lesson/start', desc: 'Начать урок (будет в Задаче 7)' },
-  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 7)' },
+  { method: 'POST', path: '/lesson/start', desc: 'Начать урок (алгоритм 5.4, идемпотентность)' },
+  { method: 'GET', path: '/lesson/current', desc: 'Текущий урок (будет в Задаче 8)' },
   { method: 'POST', path: '/lesson/{id}/complete', desc: 'Завершить урок (будет в Задаче 8)' },
   { method: 'POST', path: '/exercises/submit', desc: 'Отправить перевод (будет в Задаче 8)' },
   { method: 'POST', path: '/exercises/dont-know', desc: 'Не знаю (будет в Задаче 8)' },
@@ -572,15 +590,15 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 7: Старт урока (POST /lesson/start)
+            Задача 8: Проверка упражнения и Разбор
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            Полный алгоритм 5.4: идемпотентность через Idempotency-Key, advisory locks,
-            сверка состава, кластеризация, вызов LLM для генерации предложений,
-            валидация ответа и финальная транзакция записи урока.
+            Алгоритм 5.5: оценка перевода через LLM, ветка «Не знаю», валидация ответа,
+            обновление SRS (stage, due_lesson_number), автозавершение урока,
+            подсказки новых слов и экран разбора.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['idempotency-key', 'advisory-locks', 'clustering', 'llm-generation'].map((tag) => (
+            {['evaluate', 'dont-know', 'srs-update', 'suggestions'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
                 {tag}
               </span>
