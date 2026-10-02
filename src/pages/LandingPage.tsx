@@ -150,14 +150,20 @@ const tasks = [
   {
     id: 10,
     title: 'Админка: Словари, Жалобы, Пользователи, Промпты',
-    status: 'pending' as const,
+    status: 'done' as const,
     items: [
-      { text: 'POST /admin/dictionaries/import (dry_run)', done: false },
-      { text: 'GET/PATCH /admin/reports (жалобы)', done: false },
-      { text: 'GET /admin/users (список пользователей)', done: false },
-      { text: 'POST /admin/users/{id}/reset-password', done: false },
-      { text: 'GET /admin/db/tables (просмотр БД)', done: false },
-      { text: 'GET/PUT /admin/prompts/{key} (управление промптами)', done: false },
+      { text: 'Зависимость get_current_admin_user_id', done: true },
+      { text: 'Сервис логирования действий администраторов', done: true },
+      { text: 'POST /admin/dictionaries/import (dry_run, валидация)', done: true },
+      { text: 'GET /admin/dictionaries (список словарей)', done: true },
+      { text: 'GET /admin/reports (жалобы с фильтрацией)', done: true },
+      { text: 'PATCH /admin/reports/{id} (обработка жалобы)', done: true },
+      { text: 'GET /admin/users (поиск по email)', done: true },
+      { text: 'POST /admin/users/{id}/reset-password (с отзывом токенов)', done: true },
+      { text: 'GET /admin/db/tables (просмотр БД, маскирование)', done: true },
+      { text: 'GET /admin/db/tables/{name} (содержимое таблицы)', done: true },
+      { text: 'GET/PUT /admin/prompts/{key} (управление промптами)', done: true },
+      { text: 'Валидация плейсхолдеров в промптах', done: true },
     ],
   },
 ];
@@ -205,6 +211,17 @@ const apiEndpoints = [
   { method: 'GET', path: '/vocabulary/list', desc: 'Словарь пользователя (фильтрация, поиск)' },
   { method: 'GET', path: '/vocabulary/word/{id}', desc: 'Карточка слова' },
   { method: 'PATCH', path: '/vocabulary/word/{id}/status', desc: 'Изменить статус слова' },
+  { method: 'POST', path: '/admin/dictionaries/import', desc: 'Импорт словаря (dry_run)' },
+  { method: 'GET', path: '/admin/dictionaries', desc: 'Список словарей (админ)' },
+  { method: 'GET', path: '/admin/reports', desc: 'Жалобы на предложения' },
+  { method: 'PATCH', path: '/admin/reports/{id}', desc: 'Обработка жалобы' },
+  { method: 'GET', path: '/admin/users', desc: 'Список пользователей' },
+  { method: 'POST', path: '/admin/users/{id}/reset-password', desc: 'Сброс пароля' },
+  { method: 'GET', path: '/admin/db/tables', desc: 'Список таблиц БД' },
+  { method: 'GET', path: '/admin/db/tables/{name}', desc: 'Содержимое таблицы' },
+  { method: 'GET', path: '/admin/prompts', desc: 'Список промптов LLM' },
+  { method: 'GET', path: '/admin/prompts/{key}', desc: 'Промпт по ключу' },
+  { method: 'PUT', path: '/admin/prompts/{key}', desc: 'Обновление промпта' },
 ];
 
 const techStack = [
@@ -627,14 +644,14 @@ function NextTaskSection() {
             Следующий шаг
           </span>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Задача 10: Админка
+            MVP Завершен 🎉
           </h2>
           <p className="text-indigo-100 mb-6 max-w-2xl mx-auto">
-            Импорт словарей с dry_run, управление жалобами, список пользователей,
-            сброс паролей, просмотр БД и управление промптами LLM.
+            Все 10 задач реализованы. Полноценное приложение для интервального повторения
+            английских слов в контексте с интеграцией LLM GigaChat.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['dictionaries-import', 'reports', 'users', 'db-viewer', 'prompts'].map((tag) => (
+            {['auth', 'lessons', 'srs', 'llm', 'admin', 'vocabulary'].map((tag) => (
               <span key={tag} className="px-3 py-1.5 bg-white/10 text-white/80 rounded-lg text-sm font-mono">
                 {tag}
               </span>

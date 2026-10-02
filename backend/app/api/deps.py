@@ -62,3 +62,26 @@ async def get_current_user_id(
             detail="invalid_token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+async def get_current_admin_user_id(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncConnection = Depends(get_db),
+) -> int:
+    """
+    Зависимость для проверки прав администратора.
+    
+    Проверяет, что пользователь является администратором.
+    Использование:
+        @router.get("/admin/...")
+        async def admin_endpoint(admin_id: int = Depends(get_current_admin_user_id)):
+            ...
+    """
+    cur = await db.execute("SELECT is_admin FROM users WHERE id = %s", [user_id])
+    user = cur.fetchone()
+    if not user or not user["is_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="admin_required",
+        )
+    return user_id
