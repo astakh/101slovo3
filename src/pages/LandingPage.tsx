@@ -4,16 +4,17 @@ import {
   BookOpen, Brain, Target, Sparkles, ChevronRight, Menu, X,
   CheckCircle2, ArrowRight,
 } from 'lucide-react';
+import AuthModal from '../components/AuthModal';
 
 // ========================
 // Components
 // ========================
 
-function Header() {
+function Header({ onLoginClick, onRegisterClick }: { onLoginClick: () => void; onRegisterClick: () => void }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-lg border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
@@ -26,10 +27,16 @@ function Header() {
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Возможности</a>
             <a href="#how-it-works" className="text-gray-600 hover:text-gray-900 transition-colors">Как это работает</a>
-            <button className="px-4 py-2 text-indigo-600 font-medium hover:bg-indigo-50 rounded-lg transition-colors">
+            <button 
+              onClick={onLoginClick}
+              className="px-4 py-2 text-indigo-600 font-medium hover:bg-indigo-50 rounded-lg transition-colors"
+            >
               Войти
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+            <button 
+              onClick={onRegisterClick}
+              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            >
               Регистрация
             </button>
           </nav>
@@ -55,10 +62,22 @@ function Header() {
               <a href="#features" className="block text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Возможности</a>
               <a href="#how-it-works" className="block text-gray-600 hover:text-gray-900 py-2" onClick={() => setMobileMenuOpen(false)}>Как это работает</a>
               <div className="pt-3 border-t border-gray-100 flex gap-3">
-                <button className="flex-1 px-4 py-2 text-indigo-600 font-medium border border-indigo-200 rounded-lg">
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onLoginClick();
+                  }}
+                  className="flex-1 px-4 py-2 text-indigo-600 font-medium border border-indigo-200 rounded-lg"
+                >
                   Войти
                 </button>
-                <button className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg">
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onRegisterClick();
+                  }}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg"
+                >
                   Регистрация
                 </button>
               </div>
@@ -70,7 +89,14 @@ function Header() {
   );
 }
 
-function HeroSection() {
+function HeroSection({ onRegisterClick }: { onRegisterClick: () => void }) {
+  const scrollToHowItWorks = () => {
+    const element = document.getElementById('how-it-works');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section className="relative overflow-hidden pt-20 pb-32">
       {/* Background gradient */}
@@ -120,11 +146,17 @@ function HeroSection() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <button className="group inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 transition-all duration-200">
+            <button 
+              onClick={onRegisterClick}
+              className="group inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 transition-all duration-200"
+            >
               Начать бесплатно
               <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200">
+            <button 
+              onClick={scrollToHowItWorks}
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200"
+            >
               Узнать больше
             </button>
           </motion.div>
@@ -311,7 +343,7 @@ function HowItWorksSection() {
   );
 }
 
-function CTASection() {
+function CTASection({ onRegisterClick }: { onRegisterClick: () => void }) {
   return (
     <section className="py-24 bg-gradient-to-br from-indigo-600 to-purple-600">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -326,7 +358,10 @@ function CTASection() {
           <p className="text-xl text-indigo-100 mb-8">
             Начни прямо сейчас — первые 5 слов бесплатно
           </p>
-          <button className="group inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-600 font-semibold rounded-xl shadow-lg hover:bg-indigo-50 transition-all duration-200">
+          <button 
+            onClick={onRegisterClick}
+            className="group inline-flex items-center gap-2 px-8 py-4 bg-white text-indigo-600 font-semibold rounded-xl shadow-lg hover:bg-indigo-50 transition-all duration-200"
+          >
             Создать аккаунт
             <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </button>
@@ -364,16 +399,44 @@ function Footer() {
 // ========================
 
 export default function LandingPage() {
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
+
+  const openLoginModal = () => {
+    setAuthMode('login');
+    setAuthModalOpen(true);
+  };
+
+  const openRegisterModal = () => {
+    setAuthMode('register');
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalOpen(false);
+  };
+
+  const switchAuthMode = () => {
+    setAuthMode(authMode === 'login' ? 'register' : 'login');
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      <Header onLoginClick={openLoginModal} onRegisterClick={openRegisterModal} />
       <main className="pt-16">
-        <HeroSection />
+        <HeroSection onRegisterClick={openRegisterModal} />
         <FeaturesSection />
         <HowItWorksSection />
-        <CTASection />
+        <CTASection onRegisterClick={openRegisterModal} />
       </main>
       <Footer />
+      
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={closeAuthModal}
+        mode={authMode}
+        onSwitchMode={switchAuthMode}
+      />
     </div>
   );
 }
