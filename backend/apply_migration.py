@@ -48,7 +48,17 @@ def apply_migration():
         sys.exit(1)
     
     print(f"✅ Файл прочитан ({len(sql_content)} символов)")
-    print(f"🔗 Подключение к базе данных: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else '***'}")
+    
+    # Маскируем пароль для вывода
+    display_url = settings.DATABASE_URL
+    if "@" in display_url:
+        parts = display_url.split("@")
+        userinfo = parts[0].rsplit("//", 1)[-1]
+        if ":" in userinfo:
+            user, _ = userinfo.split(":", 1)
+            display_url = display_url.replace(userinfo, f"{user}:***")
+    
+    print(f"🔗 Подключение к базе данных: {display_url.split('@')[1] if '@' in display_url else '***'}")
     
     # Применение миграции
     try:

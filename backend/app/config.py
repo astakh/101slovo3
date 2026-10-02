@@ -4,12 +4,36 @@
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
     # ─── Database ────────────────────────────────────────────────────
     DATABASE_URL: str
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: str) -> str:
+        """
+        Нормализует DATABASE_URL для psycopg 3.
+        
+        Преобразует:
+        - postgresql+asyncpg://... -> postgresql://...
+        - postgresql+psycopg://... -> postgresql://...
+        - postgres://... -> postgresql://...
+        """
+        if not isinstance(v, str):
+            return v
+        
+        # Убираем диалект (+asyncpg, +psycopg и т.д.)
+        for dialect in ("+asyncpg", "+psycopg", "+pg8000", "+aiopg"):
+            v = v.replace(dialect, "")
+        
+        # postgres:// -> postgresql://
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+        
+        return v
 
     # ─── JWT & Auth ──────────────────────────────────────────────────
     JWT_SECRET: str
