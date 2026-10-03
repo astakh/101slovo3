@@ -367,6 +367,16 @@ class GigaChatClient:
                 finish_reason = choices[0].get("finish_reason", "")
                 content = choices[0].get("message", {}).get("content", "")
 
+                # Логируем сырой ответ от LLM
+                logger.info("=" * 80)
+                logger.info("📥 LLM RAW RESPONSE")
+                logger.info("=" * 80)
+                logger.info(f"Finish reason: {finish_reason}")
+                logger.info(f"Content length: {len(content)}")
+                logger.info(f"Content (full):")
+                logger.info(content)
+                logger.info("=" * 80)
+
                 # Обработка finish_reason
                 if finish_reason == "length":
                     # Контентная ошибка — повтор

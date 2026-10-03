@@ -46,12 +46,15 @@ async def generate_sentences(
     row = await cur.fetchone()
     if row:
         system_template = row["system_template"]
+        logger.info(f"✅ Loaded prompt from DB: {len(system_template)} chars")
     else:
         # Запасной текст из кода + критичный лог
-        logger.critical("prompt_missing: generate_sentences")
+        logger.critical("❌ prompt_missing: generate_sentences - using fallback")
         system_template = (
             "Ты лингвист-методист и составляешь учебные предложения. "
-            "Для КАЖДОЙ группы слов составь ровно одно короткое предложение уровня {level}."
+            "Для КАЖДОЙ группы слов составь ровно одно короткое предложение уровня {level}. "
+            "Верни ответ СТРОГО в формате JSON-массива: "
+            "[{\"group_index\": 0, \"sentence\": \"...\", \"reference_translation\": \"...\", \"words\": [...]}]"
         )
 
     system_message = system_template.replace("{level}", level)
@@ -65,6 +68,20 @@ async def generate_sentences(
         {"role": "system", "content": system_message},
         {"role": "user", "content": json.dumps(user_message, ensure_ascii=False)},
     ]
+
+    # Логируем запрос к LLM
+    logger.info("=" * 80)
+    logger.info("📤 LLM REQUEST (generate_sentences)")
+    logger.info("=" * 80)
+    logger.info(f"Level: {level}")
+    logger.info(f"Groups count: {len(groups)}")
+    logger.info(f"Groups: {json.dumps(groups, ensure_ascii=False, indent=2)}")
+    logger.info(f"Temperature: {settings.GEN_TEMPERATURE}")
+    logger.info(f"Max tokens: 2048")
+    logger.info(f"System message length: {len(system_message)}")
+    logger.info(f"System message (first 500 chars): {system_message[:500]}")
+    logger.info(f"User message: {json.dumps(user_message, ensure_ascii=False, indent=2)}")
+    logger.info("=" * 80)
 
     deadline = time.monotonic() + 45.0
 

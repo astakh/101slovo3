@@ -170,6 +170,17 @@ async def start_lesson(
             )
             level = (await cur.fetchone())["level"]
 
+            # Логируем группы, отправляемые на генерацию
+            logger.info("=" * 80)
+            logger.info(f"📤 GENERATION ATTEMPT {attempt}/{max_content_retries + 1}")
+            logger.info("=" * 80)
+            logger.info(f"Level: {level}")
+            logger.info(f"Pending groups count: {len(pending_groups)}")
+            logger.info(f"Pending groups:")
+            for pg in pending_groups:
+                logger.info(f"  Group {pg['group_index']}: {pg['words']}")
+            logger.info("=" * 80)
+
             try:
                 response = await generate_sentences(
                     db,
