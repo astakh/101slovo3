@@ -86,22 +86,34 @@ export default function Lesson() {
   const loadExistingLesson = async (id: number) => {
     setLoading(true);
     try {
-      // TODO: Заменить на реальный API вызов
-      // const response = await fetch(`http://localhost:8000/lesson/${id}/current`, {
-      //   headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-      // });
-      // const data = await response.json();
-      
-      // Мок-данные для демонстрации
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setLesson({
-        lesson_id: id,
-        lesson_number: lessonNumber || 5,
-        exercises_total: 3,
-        exercises: generateMockExercises(3),
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
+      }
+
+      const response = await fetch(`http://localhost:8000/lesson/${id}/current`, {
+        headers: { 'Authorization': `Bearer ${token}` },
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Не удалось загрузить урок');
+      }
+
+      const data = await response.json();
+      
+      // Преобразуем данные из API в формат Lesson
+      setLesson({
+        lesson_id: data.lesson_id,
+        lesson_number: data.lesson_number || lessonNumber || 1,
+        exercises_total: data.exercises_total,
+        exercises: [data.current_exercise], // Начинаем с текущего упражнения
+      });
+      
+      setCurrentExerciseIndex(data.exercises_done || 0);
     } catch (err) {
       setError('Не удалось загрузить урок');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -110,92 +122,45 @@ export default function Lesson() {
   const startNewLesson = async () => {
     setLoading(true);
     try {
-      // TODO: Заменить на реальный API вызов
-      // const idempotencyKey = crypto.randomUUID();
-      // const response = await fetch('http://localhost:8000/lesson/start', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      //     'Idempotency-Key': idempotencyKey,
-      //   },
-      //   body: JSON.stringify({ word_ids: wordIds }),
-      // });
-      // const data = await response.json();
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
+      }
+
+      const idempotencyKey = crypto.randomUUID();
+      const response = await fetch('http://localhost:8000/lesson/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({ word_ids: wordIds }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Не удалось начать урок');
+      }
+
+      const data = await response.json();
       
-      // Мок-данные для демонстрации
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Имитация генерации через LLM
-      
-      const exercisesCount = Math.ceil(wordIds.length / 2); // Кластеризация: ~2 слова на упражнение
+      // Преобразуем данные из API в формат Lesson
       setLesson({
-        lesson_id: Date.now(),
-        lesson_number: lessonNumber || 5,
-        exercises_total: exercisesCount,
-        exercises: generateMockExercises(exercisesCount),
+        lesson_id: data.lesson_id,
+        lesson_number: data.lesson_number,
+        exercises_total: data.exercises_total,
+        exercises: [data.current_exercise], // Начинаем с первого упражнения
       });
     } catch (err) {
       setError('Не удалось начать урок');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Генерация мок-упражнений (в реальности придут с API)
-  const generateMockExercises = (count: number): Exercise[] => {
-    const sentences = [
-      {
-        sentence: 'She achieved her goal through hard work.',
-        reference: 'Она достигла своей цели благодаря упорному труду.',
-        words: [
-          { word_id: 10, lemma: 'achieve', pos: 'verb', surface_form: 'achieved', translations: ['достигать'] },
-          { word_id: 11, lemma: 'goal', pos: 'noun', surface_form: 'goal', translations: ['цель'] },
-        ],
-      },
-      {
-        sentence: 'He decided to improve his English skills.',
-        reference: 'Он решил улучшить свои навыки английского.',
-        words: [
-          { word_id: 12, lemma: 'decide', pos: 'verb', surface_form: 'decided', translations: ['решать'] },
-          { word_id: 13, lemma: 'improve', pos: 'verb', surface_form: 'improve', translations: ['улучшать'] },
-        ],
-      },
-      {
-        sentence: 'The quick brown fox jumps over the lazy dog.',
-        reference: 'Быстрая коричневая лиса прыгает через ленивую собаку.',
-        words: [
-          { word_id: 14, lemma: 'quick', pos: 'adj', surface_form: 'quick', translations: ['быстрый'] },
-          { word_id: 15, lemma: 'jump', pos: 'verb', surface_form: 'jumps', translations: ['прыгать'] },
-        ],
-      },
-      {
-        sentence: 'They traveled to many different countries.',
-        reference: 'Они путешествовали по многим разным странам.',
-        words: [
-          { word_id: 16, lemma: 'travel', pos: 'verb', surface_form: 'traveled', translations: ['путешествовать'] },
-          { word_id: 17, lemma: 'different', pos: 'adj', surface_form: 'different', translations: ['разный'] },
-        ],
-      },
-      {
-        sentence: 'The weather is beautiful today.',
-        reference: 'Сегодня прекрасная погода.',
-        words: [
-          { word_id: 18, lemma: 'weather', pos: 'noun', surface_form: 'weather', translations: ['погода'] },
-          { word_id: 19, lemma: 'beautiful', pos: 'adj', surface_form: 'beautiful', translations: ['прекрасный'] },
-        ],
-      },
-    ];
 
-    return Array.from({ length: count }, (_, i) => {
-      const s = sentences[i % sentences.length];
-      return {
-        exercise_id: Date.now() + i,
-        order_index: i + 1,
-        sentence: s.sentence,
-        reference_translation: s.reference,
-        target_words: s.words,
-      };
-    });
-  };
 
   const handleSubmit = async () => {
     if (!lesson) return;
@@ -304,15 +269,24 @@ export default function Lesson() {
     if (!result) return;
     
     try {
-      // TODO: API вызов
-      // await fetch(`http://localhost:8000/lesson/exercises/${result.exercise_id}/suggestions/${wordId}`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      //   },
-      //   body: JSON.stringify({ action }),
-      // });
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
+      }
+
+      const response = await fetch(`http://localhost:8000/lesson/exercises/${result.exercise_id}/suggestions/${wordId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка обработки подсказки');
+      }
       
       // Обновляем состояние подсказок
       setResult({
@@ -323,6 +297,7 @@ export default function Lesson() {
       });
     } catch (err) {
       console.error(err);
+      alert(err instanceof Error ? err.message : 'Ошибка обработки подсказки');
     }
   };
 

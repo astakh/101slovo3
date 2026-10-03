@@ -110,22 +110,28 @@ export default function Onboarding() {
   const handleComplete = async () => {
     setIsLoading(true);
     try {
-      // TODO: Заменить на реальный API вызов
-      // await fetch('http://localhost:8000/onboarding/complete', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      //   },
-      //   body: JSON.stringify({ 
-      //     level, 
-      //     dictionary_id: dictionaryId,
-      //     timezone 
-      //   }),
-      // });
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
+      }
 
-      // Имитация API вызова
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('http://localhost:8000/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          level, 
+          dictionary_id: dictionaryId,
+          timezone 
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка завершения онбординга');
+      }
 
       // Обновляем статус пользователя
       if (user) {
@@ -140,6 +146,7 @@ export default function Onboarding() {
       navigate('/dashboard');
     } catch (error) {
       console.error('❌ Ошибка онбординга:', error);
+      alert(error instanceof Error ? error.message : 'Ошибка завершения онбординга');
     } finally {
       setIsLoading(false);
     }

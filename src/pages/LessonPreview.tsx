@@ -54,35 +54,26 @@ export default function LessonPreview() {
     setLoading(true);
     setError(null);
     try {
-      // TODO: Заменить на реальный API вызов
-      // const response = await fetch('http://localhost:8000/lesson/preview', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      //   },
-      // });
-      // const data = await response.json();
-      // setPreview(data);
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
+      }
 
-      // Имитация API вызова
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Мок-данные для демонстрации
-      setPreview({
-        state: 'ready',
-        lesson_number: 5,
-        due_words: [
-          { word_id: 1, lemma: 'run', pos: 'verb' },
-          { word_id: 2, lemma: 'book', pos: 'noun' },
-        ],
-        new_words: [
-          { word_id: 10, lemma: 'achieve', pos: 'verb', translations: ['достигать'] },
-          { word_id: 11, lemma: 'goal', pos: 'noun', translations: ['цель'] },
-          { word_id: 12, lemma: 'improve', pos: 'verb', translations: ['улучшать'] },
-        ],
-        dictionary_exhausted: false,
+      const response = await fetch('http://localhost:8000/lesson/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Не удалось загрузить слова');
+      }
+
+      const data = await response.json();
+      setPreview(data);
     } catch (err) {
       setError('Не удалось загрузить слова');
       console.error(err);
@@ -94,27 +85,31 @@ export default function LessonPreview() {
   const handleDeclineWord = async (wordId: number) => {
     setDecliningWords(prev => new Set(prev).add(wordId));
     try {
-      // TODO: Заменить на реальный API вызов
-      // await fetch(`http://localhost:8000/lesson/new-word/decline`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      //   },
-      //   body: JSON.stringify({ word_id: wordId }),
-      // });
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Обновляем preview (в реальности API вернёт обновлённый preview)
-      if (preview && preview.new_words) {
-        setPreview({
-          ...preview,
-          new_words: preview.new_words.filter(w => w.word_id !== wordId),
-        });
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
       }
+
+      const response = await fetch('http://localhost:8000/lesson/new-word/decline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ word_id: wordId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Не удалось отказаться от слова');
+      }
+
+      // API вернёт обновлённый preview
+      const updatedPreview = await response.json();
+      setPreview(updatedPreview);
     } catch (err) {
       console.error(err);
+      alert(err instanceof Error ? err.message : 'Ошибка отказа от слова');
     } finally {
       setDecliningWords(prev => {
         const next = new Set(prev);

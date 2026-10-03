@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 interface User {
   id: number;
   email: string;
@@ -26,43 +28,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Проверяем наличие токена при загрузке
     const token = localStorage.getItem('access_token');
     if (token) {
-      // TODO: Проверить валидность токена через API
-      // Пока просто устанавливаем заглушку
-      setUser({
-        id: 1,
-        email: 'user@example.com',
-        is_onboarded: true,
-      });
+      // Проверяем валидность токена через API
+      fetchUser(token);
     }
   }, []);
+
+  const fetchUser = async (token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
+        // Токен невалиден, удаляем его
+        localStorage.removeItem('access_token');
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Ошибка проверки токена:', error);
+      localStorage.removeItem('access_token');
+      setUser(null);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // TODO: Заменить на реальный API вызов
-      // const response = await fetch('http://localhost:8000/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password }),
-      // });
-      
-      // Имитация API вызова
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Заглушка: принимаем любой email с паролем >= 8 символов
-      if (password.length < 8) {
-        throw new Error('Неверный email или пароль');
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Неверный email или пароль');
       }
 
-      // Сохраняем токен
-      localStorage.setItem('access_token', 'mock_token_' + Date.now());
+      const data = await response.json();
       
-      // Устанавливаем пользователя
-      setUser({
-        id: 1,
-        email: email,
-        is_onboarded: false, // Новый пользователь должен пройти онбординг
-      });
+      // Сохраняем токен
+      localStorage.setItem('access_token', data.access_token);
+      
+      // Получаем данные пользователя
+      await fetchUser(data.access_token);
       
       console.log('✅ Успешный вход:', email);
     } catch (error) {
@@ -76,25 +90,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // TODO: Заменить на реальный API вызов
-      // const response = await fetch('http://localhost:8000/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password }),
-      // });
-      
-      // Имитация API вызова
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка регистрации');
+      }
+
+      const data = await response.json();
       
       // Сохраняем токен
-      localStorage.setItem('access_token', 'mock_token_' + Date.now());
+      localStorage.setItem('access_token', data.access_token);
       
-      // Устанавливаем пользователя
-      setUser({
-        id: 1,
-        email: email,
-        is_onboarded: false, // Новый пользователь должен пройти онбординг
-      });
+      // Получаем данные пользователя
+      await fetchUser(data.access_token);
       
       console.log('✅ Успешная регистрация:', email);
     } catch (error) {
