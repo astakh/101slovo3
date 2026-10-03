@@ -3,8 +3,11 @@
 Реализует проверку surface_form в предложении и валидацию ответа согласно п. 5.4 шаг 7 ТЗ.
 """
 
+import logging
 import re
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _is_word_char(c: str) -> bool:
@@ -113,12 +116,22 @@ def validate_group_response(
     Returns:
         None если всё ок, иначе строка с ошибкой
     """
+    # Логируем входные данные для отладки
+    logger.info(f"🔍 Validating group {group_index}")
+    logger.info(f"   response_entry keys: {list(response_entry.keys()) if isinstance(response_entry, dict) else 'NOT A DICT'}")
+    logger.info(f"   response_entry: {response_entry}")
+    
     sentence = response_entry.get("sentence", "")
     reference_translation = response_entry.get("reference_translation", "")
     words = response_entry.get("words", [])
+    
+    logger.info(f"   sentence: '{sentence}' (len={len(sentence)})")
+    logger.info(f"   reference_translation: '{reference_translation}' (len={len(reference_translation)})")
+    logger.info(f"   words: {words}")
 
     # 6. sentence не пуста и ≤ 200 символов
     if not sentence or len(sentence) > 200:
+        logger.error(f"   ❌ Validation failed: sentence empty or too long (len={len(sentence)})")
         return f"Group {group_index}: sentence empty or too long"
 
     # 7. reference_translation не пуста и ≤ 300 символов

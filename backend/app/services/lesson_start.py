@@ -183,7 +183,17 @@ async def start_lesson(
 
             # Логируем ответ от LLM для отладки
             logger.info(f"📥 LLM Response type: {type(response)}")
-            logger.info(f"📥 LLM Response: {response}")
+            logger.info(f"📥 LLM Response (full): {response}")
+            
+            if isinstance(response, list):
+                logger.info(f"📥 LLM Response length: {len(response)}")
+                for idx, entry in enumerate(response):
+                    logger.info(f"📥 Entry {idx}: {entry}")
+                    if isinstance(entry, dict):
+                        logger.info(f"   - Keys: {list(entry.keys())}")
+                        logger.info(f"   - sentence: '{entry.get('sentence', 'MISSING')}'")
+                        logger.info(f"   - reference_translation: '{entry.get('reference_translation', 'MISSING')}'")
+                        logger.info(f"   - group_index: {entry.get('group_index', 'MISSING')}")
 
             # Проверяем, что ответ - это список
             if not isinstance(response, list):
@@ -203,6 +213,7 @@ async def start_lesson(
                     continue
                 
                 gi = entry.get("group_index")
+                logger.info(f"🔍 Processing entry with group_index={gi}")
                 if gi is not None:
                     response_by_index[gi] = entry
 
