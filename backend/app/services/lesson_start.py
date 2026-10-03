@@ -112,8 +112,9 @@ async def start_lesson(
     # ═══════════════════════════════════════════
     # 3. Advisory lock
     # ═══════════════════════════════════════════
-    cur = await db.execute("SELECT pg_try_advisory_lock(%s)", [profile_id])
-    lock_acquired = (await cur.fetchone())[0]
+    cur = await db.execute("SELECT pg_try_advisory_lock(%s) as lock_acquired", [profile_id])
+    result = await cur.fetchone()
+    lock_acquired = result["lock_acquired"] if result else False
     if not lock_acquired:
         raise ValueError("start_in_progress")
 
