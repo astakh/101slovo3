@@ -101,7 +101,10 @@ export default function Dashboard() {
             <p className="text-indigo-100 mb-6">
               Выберите уровень и словарь, чтобы начать обучение
             </p>
-            <button className="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-colors">
+            <button 
+              onClick={() => navigate('/onboarding')}
+              className="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-colors"
+            >
               Начать настройку
             </button>
           </div>
