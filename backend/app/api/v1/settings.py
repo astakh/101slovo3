@@ -55,7 +55,7 @@ async def get_learning_profile(
            GROUP BY status""",
         [profile_id],
     )
-    words_dict = {r["status"]: r["cnt"] for r in cur.fetchall()}
+    words_dict = {r["status"]: r["cnt"] for r in await cur.fetchall()}
 
     cur = await db.execute(
         """SELECT COUNT(*) as cnt 
@@ -168,7 +168,7 @@ async def update_learning_profile(
                 "SELECT id FROM dictionaries WHERE id = %s",
                 [req.dictionary_id],
             )
-            if not cur.fetchone():
+            if not await cur.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="dictionary_not_found",

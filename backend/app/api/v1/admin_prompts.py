@@ -62,7 +62,7 @@ async def list_prompts(
     cur = await db.execute(
         "SELECT key, updated_at, updated_by FROM prompts ORDER BY key"
     )
-    return cur.fetchall()
+    return await cur.fetchall()
 
 
 @router.get("/prompts/{key}")
@@ -165,7 +165,7 @@ async def update_prompt(
                WHERE key = %s RETURNING key""",
             [template, admin_id, key],
         )
-        if not cur.fetchone():
+        if not await cur.fetchone():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="prompt_not_found",

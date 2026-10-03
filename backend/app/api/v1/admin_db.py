@@ -36,7 +36,7 @@ async def list_tables(
            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
            ORDER BY table_name"""
     )
-    all_tables = [r["table_name"] for r in cur.fetchall()]
+    all_tables = [r["table_name"] for r in await cur.fetchall()]
 
     result = []
     for table in all_tables:
@@ -94,7 +94,7 @@ async def get_table_content(
            WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name = %s""",
         [table_name],
     )
-    if not cur.fetchone() or table_name in EXCLUDED_TABLES:
+    if not await cur.fetchone() or table_name in EXCLUDED_TABLES:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="table_not_found",
@@ -119,7 +119,7 @@ async def get_table_content(
            WHERE kcu.table_name = %s AND tc.constraint_type = 'PRIMARY KEY'""",
         [table_name],
     )
-    pk_columns = {r["column_name"] for r in cur.fetchall()}
+    pk_columns = {r["column_name"] for r in await cur.fetchall()}
 
     # 3. Строим SELECT с маскированием
     select_parts = []

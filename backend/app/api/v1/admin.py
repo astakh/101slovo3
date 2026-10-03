@@ -80,7 +80,7 @@ async def list_dictionaries_admin(
            GROUP BY d.id, d.code, d.name, d.description, d.created_at
            ORDER BY d.name"""
     )
-    return cur.fetchall()
+    return await cur.fetchall()
 
 
 # ==================== Reports ====================

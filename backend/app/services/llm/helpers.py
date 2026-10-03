@@ -43,7 +43,7 @@ async def generate_sentences(
     cur = await db.execute(
         "SELECT system_template FROM prompts WHERE key = 'generate_sentences'"
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if row:
         system_template = row["system_template"]
     else:
@@ -119,7 +119,7 @@ async def evaluate_translation(
     cur = await db.execute(
         "SELECT system_template FROM prompts WHERE key = 'evaluate_translation'"
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if row:
         system_message = row["system_template"]
     else:

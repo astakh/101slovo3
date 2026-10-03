@@ -60,7 +60,7 @@ async def get_profile_stats(
            GROUP BY completed_local_date""",
         [profile_id, twelve_months_ago],
     )
-    heatmap = [HeatmapEntry(date=r["d"], count=r["cnt"]) for r in cur.fetchall()]
+    heatmap = [HeatmapEntry(date=r["d"], count=r["cnt"]) for r in await cur.fetchall()]
 
     # 2. Стрик
     cur = await db.execute(
@@ -69,7 +69,7 @@ async def get_profile_stats(
            WHERE learning_profile_id = %s AND status = 'completed'""",
         [profile_id],
     )
-    dates = {r["completed_local_date"] for r in cur.fetchall()}
+    dates = {r["completed_local_date"] for r in await cur.fetchall()}
     streak_data = calculate_streak(dates, today)
 
     # 3. Точность (все время и 30 дней)
@@ -104,7 +104,7 @@ async def get_profile_stats(
            GROUP BY status""",
         [profile_id],
     )
-    words_dict = {r["status"]: r["cnt"] for r in cur.fetchall()}
+    words_dict = {r["status"]: r["cnt"] for r in await cur.fetchall()}
 
     # 5. Завершённые уроки
     cur = await db.execute(
