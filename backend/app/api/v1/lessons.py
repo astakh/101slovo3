@@ -258,6 +258,16 @@ async def lesson_evaluate(
     - Автозавершение урока при последнем упражнении
     - Подсказки новых слов
     """
+    print("=" * 80)
+    print("🔍 EVALUATE ENDPOINT CALLED")
+    print("=" * 80)
+    print(f"User ID: {user_id}")
+    print(f"Request: {req}")
+    print(f"Exercise ID: {req.exercise_id}")
+    print(f"User Translation: {req.user_translation}")
+    print(f"Don't Know: {req.dont_know}")
+    print("=" * 80)
+    
     # Rate limit
     limiter.check_evaluate_limit(user_id)
 
@@ -266,13 +276,18 @@ async def lesson_evaluate(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
     profile = await cur.fetchone()
+    
+    print(f"📊 Profile: {profile}")
+    
     if not profile:
+        print("❌ Profile not found")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="onboarding_required",
         )
 
     try:
+        print("🚀 Calling evaluate_exercise...")
         result = await evaluate_exercise(
             db,
             user_id=user_id,
@@ -281,9 +296,12 @@ async def lesson_evaluate(
             user_translation=req.user_translation,
             dont_know=req.dont_know,
         )
+        print("✅ evaluate_exercise completed successfully")
+        print(f"Result: {result}")
         return result
     except ValueError as e:
         error_code = str(e)
+        print(f"❌ ValueError: {error_code}")
         status_map = {
             "exercise_not_found": (404, "exercise_not_found"),
             "lesson_not_active": (409, "lesson_not_active"),
@@ -294,7 +312,16 @@ async def lesson_evaluate(
             "llm_invalid_response": (503, "llm_invalid_response"),
         }
         http_status, code = status_map.get(error_code, (400, error_code))
+        print(f"❌ Raising HTTP {http_status}: {code}")
         raise HTTPException(status_code=http_status, detail=code)
+    except Exception as e:
+        print(f"❌ Unexpected error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"unexpected_error: {str(e)}"
+        )
 
 
 @router.get("/{lesson_id}/exercises/{exercise_id}/result")

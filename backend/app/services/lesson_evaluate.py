@@ -46,9 +46,20 @@ async def evaluate_exercise(
     9. Транзакция записи
     10. Формируем ответ
     """
+    print("=" * 80)
+    print("🔍 EVALUATE_EXERCISE CALLED")
+    print("=" * 80)
+    print(f"User ID: {user_id}")
+    print(f"Profile ID: {profile_id}")
+    print(f"Exercise ID: {exercise_id}")
+    print(f"User Translation: {user_translation}")
+    print(f"Don't Know: {dont_know}")
+    print("=" * 80)
+    
     # ═══════════════════════════════════════════
     # 1. Доступ и состояние
     # ═══════════════════════════════════════════
+    print("📝 Step 1: Getting exercise data...")
     cur = await db.execute(
         """SELECT le.id, le.lesson_id, le.order_index, le.status, le.target_sentence,
                   le.reference_translation, le.target_words, le.user_translation,
@@ -59,21 +70,33 @@ async def evaluate_exercise(
         [exercise_id],
     )
     exercise = await cur.fetchone()
+    
+    print(f"Exercise found: {exercise is not None}")
+    if exercise:
+        print(f"  - Status: {exercise['status']}")
+        print(f"  - Lesson ID: {exercise['lesson_id']}")
+        print(f"  - Profile ID: {exercise['learning_profile_id']}")
+    
     if not exercise:
+        print("❌ Exercise not found")
         raise ValueError("exercise_not_found")
 
     if exercise["learning_profile_id"] != profile_id:
+        print(f"❌ Profile ID mismatch: expected {profile_id}, got {exercise['learning_profile_id']}")
         raise ValueError("exercise_not_found")  # Не раскрываем существование
 
     # ═══════════════════════════════════════════
     # 2. Идемпотентность
     # ═══════════════════════════════════════════
+    print("📝 Step 2: Checking idempotency...")
     if exercise["status"] == "evaluated":
+        print("✅ Exercise already evaluated, returning saved result")
         return await _build_saved_result(db, exercise_id)
 
     # ═══════════════════════════════════════════
     # 3. Порядок: только первое pending
     # ═══════════════════════════════════════════
+    print("📝 Step 3: Checking exercise order...")
     cur = await db.execute(
         """SELECT id FROM lesson_exercises 
            WHERE lesson_id = %s AND status = 'pending' 
@@ -81,41 +104,61 @@ async def evaluate_exercise(
         [exercise["lesson_id"]],
     )
     first_pending = await cur.fetchone()
+    
+    print(f"First pending exercise ID: {first_pending['id'] if first_pending else None}")
+    print(f"Current exercise ID: {exercise_id}")
+    
     if not first_pending or first_pending["id"] != exercise_id:
+        print("❌ Not the current exercise")
         raise ValueError("not_current_exercise")
 
     # ═══════════════════════════════════════════
     # 4. Проверка статуса урока
     # ═══════════════════════════════════════════
+    print("📝 Step 4: Checking lesson status...")
+    print(f"Lesson status: {exercise['lesson_status']}")
     if exercise["lesson_status"] != "in_progress":
+        print("❌ Lesson not active")
         raise ValueError("lesson_not_active")
 
     # ═══════════════════════════════════════════
     # 5. Валидация ввода
     # ═══════════════════════════════════════════
+    print("📝 Step 5: Validating input...")
     if not dont_know:
         if not user_translation:
+            print("❌ User translation is empty")
             raise ValueError("invalid_input")
         try:
+            print(f"Validating translation: '{user_translation}'")
             user_translation = validate_user_translation(user_translation)
-        except ValueError:
+            print(f"✅ Translation validated: '{user_translation}'")
+        except ValueError as e:
+            print(f"❌ Translation validation failed: {e}")
             raise ValueError("invalid_input")
 
     # Извлекаем целевые слова из JSONB
+    print("📝 Extracting target words from JSONB...")
     target_words = exercise["target_words"]
     word_ids = [w["word_id"] for w in target_words]
+    print(f"Target words count: {len(target_words)}")
+    print(f"Word IDs: {word_ids}")
 
     # Получаем данные слов из справочника
+    print("📝 Getting word data from dictionary...")
     cur = await db.execute(
         "SELECT id, lemma, lemma_key, pos, translations FROM words WHERE id = ANY(%s)",
         [word_ids],
     )
     words_data = {r["id"]: r for r in await cur.fetchall()}
+    print(f"Words data retrieved: {len(words_data)} words")
 
     # ═══════════════════════════════════════════
     # 6. Ветка «Не знаю»
     # ═══════════════════════════════════════════
+    print(f"📝 Step 6: Don't know branch: {dont_know}")
     if dont_know:
+        print("✅ Using 'don't know' branch")
         evaluations = []
         for tw in target_words:
             evaluations.append(
@@ -123,9 +166,11 @@ async def evaluate_exercise(
             )
         suggestions = []
     else:
+        print("✅ Using LLM evaluation branch")
         # ═══════════════════════════════════════════
         # 7. Вызов LLM (Prompt 2)
         # ═══════════════════════════════════════════
+        print("📝 Step 7: Calling LLM for evaluation...")
         llm_target_words = []
         for tw in target_words:
             wd = words_data.get(tw["word_id"])
@@ -140,6 +185,8 @@ async def evaluate_exercise(
                     }
                 )
 
+        print(f"LLM target words prepared: {len(llm_target_words)}")
+        
         try:
             llm_response = await evaluate_translation(
                 db,
@@ -151,33 +198,52 @@ async def evaluate_exercise(
                 lesson_id=exercise["lesson_id"],
                 exercise_id=exercise_id,
             )
-        except LlmRefused:
+            print("✅ LLM evaluation completed")
+            print(f"LLM response: {llm_response}")
+        except LlmRefused as e:
+            print(f"❌ LLM refused: {e}")
             raise ValueError("llm_refused")
         except Exception as e:
+            print(f"❌ LLM evaluation failed: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             logger.error(f"LLM evaluation failed: {e}")
             raise ValueError("llm_unavailable")
 
         # ═══════════════════════════════════════════
         # 8. Валидация ответа LLM
         # ═══════════════════════════════════════════
+        print("📝 Step 8: Validating LLM response...")
         evaluations_raw = llm_response.get("evaluations", [])
         suggested_words_raw = llm_response.get("new_suggested_words", [])
+        
+        print(f"Evaluations count: {len(evaluations_raw)}")
+        print(f"Suggested words count: {len(suggested_words_raw)}")
 
         # Проверяем множество word_id
+        print("📝 Checking word_id set...")
         response_word_ids = {e.get("word_id") for e in evaluations_raw}
         expected_word_ids = set(word_ids)
+        print(f"Response word IDs: {response_word_ids}")
+        print(f"Expected word IDs: {expected_word_ids}")
+        
         if response_word_ids != expected_word_ids:
+            print(f"❌ Word ID mismatch!")
             raise LlmInvalidResponse("word_id mismatch")
 
         # Проверяем каждое слово один раз
+        print("📝 Checking for duplicates...")
         if len(evaluations_raw) != len(expected_word_ids):
+            print(f"❌ Duplicate word_id detected!")
             raise LlmInvalidResponse("duplicate word_id")
 
         # Валидируем результаты
+        print("📝 Validating results...")
         evaluations = []
         for ev in evaluations_raw:
             result = ev.get("result")
             if result not in ("correct", "typo", "incorrect"):
+                print(f"❌ Invalid result: {result}")
                 raise LlmInvalidResponse("invalid result")
 
             # Валидируем user_fragment
@@ -193,18 +259,25 @@ async def evaluate_exercise(
                     "user_fragment": validated_fragment,
                 }
             )
+        
+        print(f"✅ Evaluations validated: {len(evaluations)}")
 
         # Обрабатываем подсказки
+        print("📝 Processing suggestions...")
         suggestions = await _process_suggestions(
             db, profile_id, word_ids, suggested_words_raw
         )
+        print(f"✅ Suggestions processed: {len(suggestions)}")
 
     # ═══════════════════════════════════════════
     # 9. Транзакция записи
     # ═══════════════════════════════════════════
+    print("📝 Step 9: Starting write transaction...")
     lesson_number = exercise["lesson_number"]
+    print(f"Lesson number: {lesson_number}")
 
     async with db.transaction():
+        print("📝 Locking lesson...")
         # Блокируем урок
         cur = await db.execute(
             "SELECT id, status FROM lessons WHERE id = %s FOR UPDATE",
@@ -212,8 +285,11 @@ async def evaluate_exercise(
         )
         locked_lesson = await cur.fetchone()
         if not locked_lesson or locked_lesson["status"] != "in_progress":
+            print("❌ Lesson not active")
             raise ValueError("lesson_not_active")
+        print("✅ Lesson locked")
 
+        print("📝 Locking exercise...")
         # Блокируем упражнение
         cur = await db.execute(
             "SELECT id, status FROM lesson_exercises WHERE id = %s FOR UPDATE",
@@ -221,17 +297,24 @@ async def evaluate_exercise(
         )
         locked_exercise = await cur.fetchone()
         if locked_exercise["status"] == "evaluated":
+            print("✅ Exercise already evaluated (idempotency)")
             # Идемпотентность: уже оценено
             return await _build_saved_result(db, exercise_id)
+        print("✅ Exercise locked")
 
         # Обрабатываем каждое целевое слово
+        print("📝 Processing target words...")
         updated_target_words = []
         for tw in target_words:
             wid = tw["word_id"]
+            print(f"  Processing word ID: {wid}")
             # Находим оценку для этого слова
             ev = next((e for e in evaluations if e["word_id"] == wid), None)
             if not ev:
+                print(f"    ⚠️ No evaluation found, using default")
                 ev = {"word_id": wid, "result": "incorrect", "user_fragment": None}
+            else:
+                print(f"    Evaluation: {ev['result']}")
 
             # Блокируем строку user_words
             cur = await db.execute(
@@ -243,10 +326,12 @@ async def evaluate_exercise(
 
             stage_after = None
             if uw and uw["status"] == "active":
+                print(f"    Applying SRS: stage={uw['stage']}, result={ev['result']}")
                 # Применяем SRS
                 new_stage, due, new_status = srs_update(
                     uw["stage"], ev["result"], lesson_number
                 )
+                print(f"    SRS result: new_stage={new_stage}, due={due}, status={new_status}")
                 await db.execute(
                     """UPDATE user_words 
                        SET stage = %s, due_lesson_number = %s, status = %s, 
@@ -263,12 +348,16 @@ async def evaluate_exercise(
             tw_copy["stage_after"] = stage_after
             updated_target_words.append(tw_copy)
 
+        print(f"✅ Target words processed: {len(updated_target_words)}")
+
         # Формируем suggested_words JSONB
+        print("📝 Forming suggested_words JSONB...")
         suggested_words_json = [
             {"word_id": s["word_id"], "state": "suggested"} for s in suggestions
         ]
 
         # Обновляем упражнение
+        print("📝 Updating exercise...")
         await db.execute(
             """UPDATE lesson_exercises 
                SET user_translation = %s, dont_know = %s, status = 'evaluated', 
@@ -282,17 +371,21 @@ async def evaluate_exercise(
                 exercise_id,
             ],
         )
+        print("✅ Exercise updated")
 
         # Проверяем автозавершение урока
+        print("📝 Checking lesson completion...")
         cur = await db.execute(
             """SELECT COUNT(*) as cnt FROM lesson_exercises 
                WHERE lesson_id = %s AND status = 'pending'""",
             [exercise["lesson_id"]],
         )
         pending_count = (await cur.fetchone())["cnt"]
+        print(f"Pending exercises: {pending_count}")
 
         lesson_completed = False
         if pending_count == 0:
+            print("✅ All exercises completed, marking lesson as completed")
             # Получаем таймзону пользователя
             cur = await db.execute(
                 """SELECT u.timezone FROM users u 
@@ -310,6 +403,7 @@ async def evaluate_exercise(
                 [completed_date, exercise["lesson_id"]],
             )
             lesson_completed = True
+            print(f"✅ Lesson completed at {completed_date}")
 
             # Событие завершения урока
             await db.execute(
@@ -322,6 +416,7 @@ async def evaluate_exercise(
             )
 
         # Событие оценки упражнения
+        print("📝 Recording exercise_evaluated event...")
         await db.execute(
             "INSERT INTO events (user_id, type, payload) VALUES (%s, %s, %s)",
             [
@@ -336,10 +431,12 @@ async def evaluate_exercise(
                 ),
             ],
         )
+        print("✅ Event recorded")
 
     # ═══════════════════════════════════════════
     # 10. Формируем ответ
     # ═══════════════════════════════════════════
+    print("📝 Step 10: Forming response...")
     words_response = []
     for tw in updated_target_words:
         wd = words_data.get(tw["word_id"])
@@ -355,7 +452,7 @@ async def evaluate_exercise(
             }
         )
 
-    return {
+    response = {
         "exercise_id": exercise_id,
         "target_sentence": exercise["target_sentence"],
         "reference_translation": exercise["reference_translation"],
@@ -364,6 +461,15 @@ async def evaluate_exercise(
         "suggestions": suggestions,
         "lesson_completed": lesson_completed,
     }
+    
+    print("✅ Response formed:")
+    print(f"  - Exercise ID: {response['exercise_id']}")
+    print(f"  - Words count: {len(response['words'])}")
+    print(f"  - Suggestions count: {len(response['suggestions'])}")
+    print(f"  - Lesson completed: {response['lesson_completed']}")
+    print("=" * 80)
+    
+    return response
 
 
 async def _process_suggestions(
