@@ -81,9 +81,8 @@ async def get_learning_profile(
     )
 
     # Точность за 30 дней
-    user_tz = (
-        await db.execute("SELECT timezone FROM users WHERE id = %s", [user_id])
-    ).fetchone()["timezone"]
+    cur = await db.execute("SELECT timezone FROM users WHERE id = %s", [user_id])
+    user_tz = (await cur.fetchone())["timezone"]
     today = get_user_today(user_tz)
     cur = await db.execute(
         """SELECT COUNT(*) as total,
