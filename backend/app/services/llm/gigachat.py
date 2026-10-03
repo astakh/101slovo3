@@ -79,9 +79,24 @@ class GigaTokenManager:
         data = {"scope": settings.GIGACHAT_SCOPE}
         ssl_context = ssl.create_default_context()
 
+        logger.info(f"🔍 GigaChat OAuth Request:")
+        logger.info(f"   URL: {url}")
+        logger.info(f"   RqUID: {rq_uid}")
+        logger.info(f"   Scope: {settings.GIGACHAT_SCOPE}")
+        logger.info(f"   Auth Key (first 10 chars): {settings.GIGACHAT_AUTH_KEY[:10]}...")
+
         try:
             async with httpx.AsyncClient(verify=ssl_context, timeout=10.0) as client:
                 resp = await client.post(url, headers=headers, data=data)
+                
+                logger.info(f"📥 GigaChat OAuth Response:")
+                logger.info(f"   Status: {resp.status_code}")
+                
+                if resp.status_code != 200:
+                    logger.error(f"❌ GigaChat OAuth Error:")
+                    logger.error(f"   Status: {resp.status_code}")
+                    logger.error(f"   Response: {resp.text}")
+                
                 resp.raise_for_status()
                 payload = resp.json()
 
@@ -94,9 +109,10 @@ class GigaTokenManager:
                 else:
                     self._expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
 
-                logger.info("GigaChat token refreshed successfully")
+                logger.info("✅ GigaChat token refreshed successfully")
+                logger.info(f"   Token expires at: {self._expires_at}")
         except Exception as e:
-            logger.critical(f"Failed to refresh GigaChat token: {e}")
+            logger.critical(f"❌ Failed to refresh GigaChat token: {e}")
             raise LlmUnavailable(f"Token refresh failed: {e}")
 
 
@@ -152,6 +168,11 @@ class GigaChatClient:
         - 5xx: server error с retry
         - Таймауты и ошибки соединения
         """
+        logger.info(f"🚀 Starting GigaChat chat request")
+        logger.info(f"   Messages: {len(messages)}")
+        logger.info(f"   Temperature: {temperature}")
+        logger.info(f"   Max tokens: {max_tokens}")
+        
         async with self._semaphore:
             return await self._chat_with_retries(
                 messages, temperature, max_tokens, timeout, deadline
@@ -189,19 +210,28 @@ class GigaChatClient:
 
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
+                logger.error(f"❌ GigaChat HTTP Error: {status_code}")
+                logger.error(f"   Response: {e.response.text[:500]}")
 
                 if status_code == 401:
                     if transport_retries == 0:
                         # Один принудительный refresh и повтор
                         transport_retries += 1
+                        logger.warning("🔄 GigaChat 401, refreshing token and retrying...")
                         try:
                             await token_manager.get_token(force_refresh=True)
                             continue
                         except Exception:
                             raise LlmUnavailable("Token refresh failed after 401")
                     else:
-                        logger.critical("GigaChat 401 after token refresh")
+                        logger.critical("❌ GigaChat 401 after token refresh")
                         raise LlmUnavailable("GigaChat auth failed")
+
+                elif status_code == 404:
+                    logger.critical(f"❌ GigaChat 404 Not Found")
+                    logger.critical(f"   URL: {e.request.url}")
+                    logger.critical(f"   Response: {e.response.text}")
+                    raise LlmUnavailable(f"GigaChat endpoint not found (404). Check API URL and model name.")
 
                 elif status_code == 429:
                     if transport_retries >= max_transport_retries:
@@ -213,16 +243,16 @@ class GigaChatClient:
                     else:
                         delay = 1.0 if transport_retries == 1 else 2.0
                     delay += random.uniform(0, 0.5)  # jitter
-                    logger.warning(f"GigaChat 429, retrying after {delay:.2f}s")
+                    logger.warning(f"⚠️ GigaChat 429, retrying after {delay:.2f}s")
                     await asyncio.sleep(delay)
                     continue
 
                 elif status_code == 402:
-                    logger.critical("GigaChat quota exceeded (402)")
+                    logger.critical("❌ GigaChat quota exceeded (402)")
                     raise LlmQuotaExceeded()
 
                 elif status_code == 400:
-                    logger.critical(f"GigaChat 400: {e.response.text}")
+                    logger.critical(f"❌ GigaChat 400: {e.response.text}")
                     raise LlmUnavailable("Bad request to GigaChat")
 
                 elif 500 <= status_code < 600:
@@ -230,11 +260,12 @@ class GigaChatClient:
                         raise LlmUnavailable(f"Server error {status_code}")
                     transport_retries += 1
                     delay = 1.0 * transport_retries + random.uniform(0, 0.5)
-                    logger.warning(f"GigaChat {status_code}, retrying after {delay:.2f}s")
+                    logger.warning(f"⚠️ GigaChat {status_code}, retrying after {delay:.2f}s")
                     await asyncio.sleep(delay)
                     continue
 
                 else:
+                    logger.critical(f"❌ Unexpected HTTP {status_code}")
                     raise LlmUnavailable(f"Unexpected HTTP {status_code}")
 
             except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
@@ -255,7 +286,7 @@ class GigaChatClient:
         timeout: float,
     ) -> dict:
         """Выполняет HTTP-запрос к GigaChat API."""
-        url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+        url = "https://api.giga.chat/api/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
@@ -268,8 +299,25 @@ class GigaChatClient:
         }
         ssl_context = ssl.create_default_context()
 
+        logger.info(f"🔍 GigaChat API Request:")
+        logger.info(f"   URL: {url}")
+        logger.info(f"   Model: {settings.GIGACHAT_MODEL}")
+        logger.info(f"   Messages count: {len(messages)}")
+        logger.info(f"   Temperature: {temperature}")
+        logger.info(f"   Max tokens: {max_tokens}")
+
         async with httpx.AsyncClient(verify=ssl_context, timeout=timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
+            
+            logger.info(f"📥 GigaChat API Response:")
+            logger.info(f"   Status: {resp.status_code}")
+            logger.info(f"   Headers: {dict(resp.headers)}")
+            
+            if resp.status_code != 200:
+                logger.error(f"❌ GigaChat API Error:")
+                logger.error(f"   Status: {resp.status_code}")
+                logger.error(f"   Response: {resp.text}")
+            
             resp.raise_for_status()
             return resp.json()
 
