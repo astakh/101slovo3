@@ -83,7 +83,31 @@ async def generate_sentences(
         },
     )
 
-    return result
+    # Логируем результат для отладки
+    logger.info(f"📦 generate_sentences result type: {type(result)}")
+    logger.info(f"📦 generate_sentences result: {result}")
+
+    # Извлекаем список предложений из ответа LLM
+    # LLM может возвращать:
+    # 1. Прямой список: [{"group_index": 0, "sentence": "...", ...}, ...]
+    # 2. Объект с полем "sentences": {"sentences": [...]}
+    # 3. Объект с полем "groups": {"groups": [...]}
+    
+    if isinstance(result, list):
+        return result
+    elif isinstance(result, dict):
+        # Пробуем извлечь список из различных полей
+        for key in ["sentences", "groups", "results", "exercises"]:
+            if key in result and isinstance(result[key], list):
+                logger.info(f"✅ Extracted list from field '{key}'")
+                return result[key]
+        
+        # Если не нашли известное поле, возвращаем сам объект как единственный элемент
+        logger.warning(f"⚠️ Could not extract list from dict, returning as single-item list")
+        return [result]
+    else:
+        logger.error(f"❌ Unexpected result type: {type(result)}")
+        raise ValueError(f"Unexpected LLM response type: {type(result)}")
 
 
 async def evaluate_translation(

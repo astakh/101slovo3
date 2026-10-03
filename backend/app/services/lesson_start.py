@@ -181,12 +181,27 @@ async def start_lesson(
                 logger.error(f"LLM generation failed: {e}")
                 raise LlmUnavailable("llm_unavailable")
 
+            # Логируем ответ от LLM для отладки
+            logger.info(f"📥 LLM Response type: {type(response)}")
+            logger.info(f"📥 LLM Response: {response}")
+
+            # Проверяем, что ответ - это список
+            if not isinstance(response, list):
+                logger.error(f"❌ LLM returned non-list response: {type(response)}")
+                logger.error(f"❌ Response content: {response}")
+                raise LlmInvalidResponse("LLM response is not a list")
+
             # Валидируем ответ
             all_sentences = [r.get("sentence", "") for r in valid_results.values()]
 
             # Группируем ответ по group_index
             response_by_index = {}
             for entry in response:
+                # Проверяем, что entry - это словарь
+                if not isinstance(entry, dict):
+                    logger.warning(f"⚠️ Skipping non-dict entry: {entry}")
+                    continue
+                
                 gi = entry.get("group_index")
                 if gi is not None:
                     response_by_index[gi] = entry

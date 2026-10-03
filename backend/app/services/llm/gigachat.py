@@ -382,6 +382,10 @@ class GigaChatClient:
 
                 # Извлекаем JSON
                 parsed_json = self._extract_json(content)
+                
+                # Логируем извлечённый JSON
+                logger.info(f"📦 Extracted JSON type: {type(parsed_json)}")
+                logger.info(f"📦 Extracted JSON: {parsed_json}")
 
                 # Логируем успех
                 if db and log_context:
