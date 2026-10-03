@@ -131,39 +131,111 @@ async def generate_sentences(
     print("=" * 80)
 
     # Логируем результат для отладки
-    logger.info("=" * 80)
-    logger.info("📦 generate_sentences RESULT")
-    logger.info("=" * 80)
-    logger.info(f"Result type: {type(result)}")
-    logger.info("-" * 80)
+    print("=" * 80)
+    print("📦 generate_sentences RESULT")
+    print("=" * 80)
+    print(f"Result type: {type(result)}")
+    print("-" * 80)
     if isinstance(result, (dict, list)):
-        logger.info("Result (formatted):")
-        logger.info(json.dumps(result, ensure_ascii=False, indent=2))
+        print("Result (formatted):")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        logger.info(f"Result (raw): {result}")
-    logger.info("=" * 80)
+        print(f"Result (raw): {result}")
+    print("=" * 80)
 
     # Извлекаем список предложений из ответа LLM
-    # LLM может возвращать:
-    # 1. Прямой список: [{"group_index": 0, "sentence": "...", ...}, ...]
-    # 2. Объект с полем "sentences": {"sentences": [...]}
-    # 3. Объект с полем "groups": {"groups": [...]}
+    sentences_list = None
     
     if isinstance(result, list):
-        return result
+        sentences_list = result
     elif isinstance(result, dict):
         # Пробуем извлечь список из различных полей
         for key in ["sentences", "groups", "results", "exercises"]:
             if key in result and isinstance(result[key], list):
-                logger.info(f"✅ Extracted list from field '{key}'")
-                return result[key]
+                print(f"✅ Extracted list from field '{key}'")
+                sentences_list = result[key]
+                break
         
-        # Если не нашли известное поле, возвращаем сам объект как единственный элемент
-        logger.warning(f"⚠️ Could not extract list from dict, returning as single-item list")
-        return [result]
+        if sentences_list is None:
+            print(f"⚠️ Could not extract list from dict, returning as single-item list")
+            sentences_list = [result]
     else:
-        logger.error(f"❌ Unexpected result type: {type(result)}")
+        print(f"❌ Unexpected result type: {type(result)}")
         raise ValueError(f"Unexpected LLM response type: {type(result)}")
+
+    # Преобразуем формат ответа LLM в ожидаемый формат
+    # LLM может возвращать:
+    # - {"surface_forms": [...], "reference_translation": "...", "group_index": 0}
+    # Нам нужно:
+    # - {"group_index": 0, "sentence": "...", "reference_translation": "...", "words": [...]}
+    
+    print("=" * 80)
+    print("🔄 NORMALIZING LLM RESPONSE")
+    print("=" * 80)
+    
+    normalized = []
+    for idx, sentence_data in enumerate(sentences_list):
+        if not isinstance(sentence_data, dict):
+            print(f"⚠️ Skipping non-dict entry at index {idx}")
+            continue
+        
+        group_index = sentence_data.get("group_index", idx)
+        reference_translation = sentence_data.get("reference_translation", "")
+        
+        # Получаем sentence (предложение на английском)
+        sentence = sentence_data.get("sentence", "")
+        
+        # Если sentence отсутствует, но есть surface_forms, генерируем предложение
+        if not sentence and "surface_forms" in sentence_data:
+            surface_forms = sentence_data["surface_forms"]
+            if isinstance(surface_forms, list) and surface_forms:
+                # Соединяем surface_forms в предложение
+                sentence = " ".join(surface_forms)
+                print(f"⚠️ Generated sentence from surface_forms: '{sentence}'")
+        
+        # Получаем words
+        words = sentence_data.get("words", [])
+        
+        # Если words отсутствует, но есть surface_forms, преобразуем
+        if not words and "surface_forms" in sentence_data:
+            surface_forms = sentence_data["surface_forms"]
+            if isinstance(surface_forms, list):
+                # Находим соответствующую группу в pending_groups
+                pending_group = next((g for g in groups if g.get("group_index") == group_index), None)
+                
+                if pending_group and "words" in pending_group:
+                    # Преобразуем surface_forms в words
+                    words = []
+                    for i, surface_form in enumerate(surface_forms):
+                        if i < len(pending_group["words"]):
+                            word_data = pending_group["words"][i]
+                            words.append({
+                                "word_id": word_data.get("word_id"),
+                                "lemma": word_data.get("lemma", ""),
+                                "pos": word_data.get("pos", ""),
+                                "surface_form": surface_form
+                            })
+                    print(f"✅ Converted surface_forms to words for group {group_index}")
+        
+        normalized_entry = {
+            "group_index": group_index,
+            "sentence": sentence,
+            "reference_translation": reference_translation,
+            "words": words
+        }
+        
+        print(f"📝 Normalized entry {group_index}:")
+        print(f"   sentence: '{sentence}'")
+        print(f"   reference_translation: '{reference_translation}'")
+        print(f"   words count: {len(words)}")
+        
+        normalized.append(normalized_entry)
+    
+    print("=" * 80)
+    print(f"✅ Normalized {len(normalized)} entries")
+    print("=" * 80)
+    
+    return normalized
 
 
 async def evaluate_translation(
