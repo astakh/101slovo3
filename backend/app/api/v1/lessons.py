@@ -4,6 +4,7 @@ Preview, Decline, Start, Evaluate, Suggestions, Report.
 """
 
 import json
+import logging
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -17,6 +18,7 @@ from app.services.lesson_evaluate import _build_saved_result, evaluate_exercise
 from app.services.lesson_preview import get_preview_data
 from app.services.lesson_start import start_lesson
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -54,6 +56,7 @@ async def lesson_preview(
     - dictionary_exhausted: флаг исчерпания словаря
     """
     # Проверяем онбординг и получаем профиль
+    logger.info(f"🔍 Preview: user_id={user_id}")
     cur = await db.execute(
         """SELECT u.is_onboarded, lp.id as profile_id 
            FROM users u 
@@ -61,7 +64,9 @@ async def lesson_preview(
            WHERE u.id = %s""",
         [user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
+    logger.info(f"📊 Preview: row={row}")
+    
     if not row or not row["is_onboarded"]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -74,6 +79,7 @@ async def lesson_preview(
         )
 
     result = await get_preview_data(db, row["profile_id"])
+    logger.info(f"✅ Preview: state={result.get('state')}")
     return result
 
 
@@ -99,7 +105,7 @@ async def decline_new_word(
            WHERE u.id = %s""",
         [user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row or not row["is_onboarded"]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -114,7 +120,7 @@ async def decline_new_word(
            WHERE learning_profile_id = %s AND status = 'in_progress'""",
         [profile_id],
     )
-    if cur.fetchone():
+    if await cur.fetchone():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="lesson_in_progress",
@@ -126,7 +132,7 @@ async def decline_new_word(
            WHERE id = %s AND %s = ANY(dictionary_ids)""",
         [req.word_id, dictionary_id],
     )
-    if not cur.fetchone():
+    if not await cur.fetchone():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="word_not_in_dictionary",
@@ -138,7 +144,7 @@ async def decline_new_word(
            WHERE learning_profile_id = %s AND word_id = %s""",
         [profile_id, req.word_id],
     )
-    existing = cur.fetchone()
+    existing = await cur.fetchone()
 
     if existing:
         if existing["status"] == "ignored":
@@ -259,7 +265,7 @@ async def lesson_evaluate(
     cur = await db.execute(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -309,7 +315,7 @@ async def get_exercise_result(
            WHERE le.id = %s AND le.lesson_id = %s AND lp.user_id = %s""",
         [exercise_id, lesson_id, user_id],
     )
-    if not cur.fetchone():
+    if not await cur.fetchone():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="exercise_not_found",
@@ -347,7 +353,7 @@ async def handle_suggestion(
            WHERE le.id = %s AND lp.user_id = %s""",
         [exercise_id, user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -372,7 +378,7 @@ async def handle_suggestion(
             "SELECT id, status FROM user_words WHERE learning_profile_id = %s AND word_id = %s",
             [profile_id, word_id],
         )
-        existing = cur.fetchone()
+        existing = await cur.fetchone()
 
         if req.action == "add":
             if existing:
@@ -457,7 +463,7 @@ async def report_exercise(
            WHERE le.id = %s AND lp.user_id = %s""",
         [exercise_id, user_id],
     )
-    if not cur.fetchone():
+    if not await cur.fetchone():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="exercise_not_found",
@@ -503,7 +509,7 @@ async def lesson_summary(
     cur = await db.execute(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -540,7 +546,7 @@ async def lesson_current(
     cur = await db.execute(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -44,7 +44,7 @@ async def get_preview_data(db: AsyncConnection, profile_id: int) -> dict:
            WHERE lp.id = %s""",
         [profile_id],
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise ValueError("profile_not_found")
 
@@ -59,7 +59,7 @@ async def get_preview_data(db: AsyncConnection, profile_id: int) -> dict:
            GROUP BY l.id, l.lesson_number""",
         [profile_id],
     )
-    resume_row = cur.fetchone()
+    resume_row = await cur.fetchone()
     if resume_row:
         return {
             "state": "resume",
@@ -77,7 +77,7 @@ async def get_preview_data(db: AsyncConnection, profile_id: int) -> dict:
            WHERE lp.id = %s""",
         [profile_id],
     )
-    user_tz = cur.fetchone()["timezone"]
+    user_tz = (await cur.fetchone())["timezone"]
 
     today = get_user_today(user_tz)
 
@@ -87,7 +87,7 @@ async def get_preview_data(db: AsyncConnection, profile_id: int) -> dict:
            WHERE learning_profile_id = %s AND started_local_date = %s""",
         [profile_id, today],
     )
-    lessons_today = cur.fetchone()["cnt"]
+    lessons_today = (await cur.fetchone())["cnt"]
 
     if lessons_today >= profile["daily_lesson_limit"]:
         resets_at = get_resets_at(user_tz)
@@ -114,7 +114,7 @@ async def get_preview_data(db: AsyncConnection, profile_id: int) -> dict:
              AND uw.due_lesson_number <= %s""",
         [profile_id, next_lesson_number],
     )
-    due_words = cur.fetchall()
+    due_words = await cur.fetchall()
     due_words = sort_by_rank(due_words, seed)
     due_words = due_words[:N]
 
@@ -158,7 +158,7 @@ async def get_preview_data(db: AsyncConnection, profile_id: int) -> dict:
             params.append(allowed_levels)
 
         cur = await db.execute(query, params)
-        candidates = cur.fetchall()
+        candidates = await cur.fetchall()
         candidates = sort_by_rank(candidates, seed)
         new_words = candidates[:k]
 

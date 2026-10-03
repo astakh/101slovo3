@@ -64,7 +64,7 @@ async def start_lesson(
            WHERE learning_profile_id = %s AND idempotency_key = %s""",
         [profile_id, idempotency_key],
     )
-    existing_lesson = cur.fetchone()
+    existing_lesson = await cur.fetchone()
 
     if existing_lesson:
         if existing_lesson["status"] == "in_progress":
@@ -84,7 +84,7 @@ async def start_lesson(
            WHERE learning_profile_id = %s AND status = 'in_progress'""",
         [profile_id],
     )
-    if cur.fetchone():
+    if await cur.fetchone():
         raise ValueError("resume_available")
 
     # Проверяем лимит
@@ -94,7 +94,7 @@ async def start_lesson(
            WHERE lp.id = %s""",
         [profile_id],
     )
-    profile_row = cur.fetchone()
+    profile_row = await cur.fetchone()
     if not profile_row:
         raise ValueError("profile_not_found")
 
@@ -105,7 +105,7 @@ async def start_lesson(
            WHERE learning_profile_id = %s AND started_local_date = %s""",
         [profile_id, today],
     )
-    lessons_today = cur.fetchone()["cnt"]
+    lessons_today = (await cur.fetchone())["cnt"]
     if lessons_today >= profile_row["daily_lesson_limit"]:
         raise ValueError("limit_reached")
 
@@ -113,7 +113,7 @@ async def start_lesson(
     # 3. Advisory lock
     # ═══════════════════════════════════════════
     cur = await db.execute("SELECT pg_try_advisory_lock(%s)", [profile_id])
-    lock_acquired = cur.fetchone()[0]
+    lock_acquired = (await cur.fetchone())[0]
     if not lock_acquired:
         raise ValueError("start_in_progress")
 
@@ -167,7 +167,7 @@ async def start_lesson(
             cur = await db.execute(
                 "SELECT level FROM learning_profiles WHERE id = %s", [profile_id]
             )
-            level = cur.fetchone()["level"]
+            level = (await cur.fetchone())["level"]
 
             try:
                 response = await generate_sentences(
@@ -226,7 +226,7 @@ async def start_lesson(
                    WHERE id = %s FOR UPDATE""",
                 [profile_id],
             )
-            locked_profile = cur.fetchone()
+            locked_profile = await cur.fetchone()
             if not locked_profile:
                 raise ValueError("profile_not_found")
 
@@ -240,7 +240,7 @@ async def start_lesson(
                    WHERE learning_profile_id = %s AND idempotency_key = %s""",
                 [profile_id, idempotency_key],
             )
-            if cur.fetchone():
+            if await cur.fetchone():
                 raise ValueError("idempotency_key_taken")
 
             # Повторная проверка лимита
@@ -249,7 +249,7 @@ async def start_lesson(
                    WHERE learning_profile_id = %s AND started_local_date = %s""",
                 [profile_id, today],
             )
-            if cur.fetchone()["cnt"] >= profile_row["daily_lesson_limit"]:
+            if (await cur.fetchone())["cnt"] >= profile_row["daily_lesson_limit"]:
                 raise ValueError("limit_reached")
 
             # Повторная проверка слов
@@ -264,7 +264,7 @@ async def start_lesson(
                        AND status = 'active' AND due_lesson_number <= %s""",
                     [profile_id, list(due_word_ids), expected_next],
                 )
-                valid_due = {r["word_id"] for r in cur.fetchall()}
+                valid_due = {r["word_id"] for r in await cur.fetchall()}
                 if valid_due != due_word_ids:
                     raise ValueError("words_changed")
 
@@ -275,7 +275,7 @@ async def start_lesson(
                        WHERE learning_profile_id = %s AND word_id = ANY(%s)""",
                     [profile_id, list(new_word_ids)],
                 )
-                existing_new = {r["word_id"] for r in cur.fetchall()}
+                existing_new = {r["word_id"] for r in await cur.fetchall()}
                 if existing_new:
                     raise ValueError("words_changed")
 
@@ -304,7 +304,7 @@ async def start_lesson(
                    RETURNING id""",
                 [profile_id, expected_next, idempotency_key, today],
             )
-            lesson_id = cur.fetchone()["id"]
+            lesson_id = (await cur.fetchone())["id"]
 
             # Вставляем упражнения
             first_exercise_id = None
@@ -347,7 +347,7 @@ async def start_lesson(
                                WHERE learning_profile_id = %s AND word_id = %s""",
                             [profile_id, tw["word_id"]],
                         )
-                        row = cur.fetchone()
+                        row = await cur.fetchone()
                         tw["stage_before"] = row["stage"] if row else 0
 
                 cur = await db.execute(
@@ -363,7 +363,7 @@ async def start_lesson(
                         json.dumps(target_words_json, ensure_ascii=False),
                     ],
                 )
-                exercise_id = cur.fetchone()["id"]
+                exercise_id = (await cur.fetchone())["id"]
 
                 if idx == 0:
                     first_exercise_id = exercise_id
@@ -425,7 +425,7 @@ async def _build_existing_lesson_response(
            FROM lesson_exercises WHERE lesson_id = %s""",
         [lesson_id],
     )
-    stats = cur.fetchone()
+    stats = await cur.fetchone()
 
     # Получаем первое невыполненное упражнение
     cur = await db.execute(

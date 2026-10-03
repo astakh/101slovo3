@@ -58,7 +58,7 @@ async def evaluate_exercise(
            WHERE le.id = %s""",
         [exercise_id],
     )
-    exercise = cur.fetchone()
+    exercise = await cur.fetchone()
     if not exercise:
         raise ValueError("exercise_not_found")
 
@@ -80,7 +80,7 @@ async def evaluate_exercise(
            ORDER BY order_index LIMIT 1""",
         [exercise["lesson_id"]],
     )
-    first_pending = cur.fetchone()
+    first_pending = await cur.fetchone()
     if not first_pending or first_pending["id"] != exercise_id:
         raise ValueError("not_current_exercise")
 
@@ -110,7 +110,7 @@ async def evaluate_exercise(
         "SELECT id, lemma, lemma_key, pos, translations FROM words WHERE id = ANY(%s)",
         [word_ids],
     )
-    words_data = {r["id"]: r for r in cur.fetchall()}
+    words_data = {r["id"]: r for r in await cur.fetchall()}
 
     # ═══════════════════════════════════════════
     # 6. Ветка «Не знаю»
@@ -210,7 +210,7 @@ async def evaluate_exercise(
             "SELECT id, status FROM lessons WHERE id = %s FOR UPDATE",
             [exercise["lesson_id"]],
         )
-        locked_lesson = cur.fetchone()
+        locked_lesson = await cur.fetchone()
         if not locked_lesson or locked_lesson["status"] != "in_progress":
             raise ValueError("lesson_not_active")
 
@@ -219,7 +219,7 @@ async def evaluate_exercise(
             "SELECT id, status FROM lesson_exercises WHERE id = %s FOR UPDATE",
             [exercise_id],
         )
-        locked_exercise = cur.fetchone()
+        locked_exercise = await cur.fetchone()
         if locked_exercise["status"] == "evaluated":
             # Идемпотентность: уже оценено
             return await _build_saved_result(db, exercise_id)
@@ -239,7 +239,7 @@ async def evaluate_exercise(
                    WHERE learning_profile_id = %s AND word_id = %s FOR UPDATE""",
                 [profile_id, wid],
             )
-            uw = cur.fetchone()
+            uw = await cur.fetchone()
 
             stage_after = None
             if uw and uw["status"] == "active":
@@ -289,7 +289,7 @@ async def evaluate_exercise(
                WHERE lesson_id = %s AND status = 'pending'""",
             [exercise["lesson_id"]],
         )
-        pending_count = cur.fetchone()["cnt"]
+        pending_count = (await cur.fetchone())["cnt"]
 
         lesson_completed = False
         if pending_count == 0:
@@ -300,7 +300,7 @@ async def evaluate_exercise(
                    WHERE lp.id = %s""",
                 [profile_id],
             )
-            user_tz = cur.fetchone()["timezone"]
+            user_tz = (await cur.fetchone())["timezone"]
             completed_date = get_user_today(user_tz)
 
             await db.execute(
@@ -406,7 +406,7 @@ async def _process_suggestions(
             "SELECT lemma_key, pos FROM words WHERE id = ANY(%s)",
             [target_word_ids],
         )
-        target_keys = {(r["lemma_key"], r["pos"]) for r in cur.fetchall()}
+        target_keys = {(r["lemma_key"], r["pos"]) for r in await cur.fetchall()}
 
     normalized = [
         s for s in normalized if (s["lemma_key"], s["pos"]) not in target_keys
@@ -419,7 +419,7 @@ async def _process_suggestions(
             "SELECT id, lemma, pos, translations FROM words WHERE lemma_key = %s AND pos = %s",
             [s["lemma_key"], s["pos"]],
         )
-        word = cur.fetchone()
+        word = await cur.fetchone()
         if not word:
             continue  # Не найденные слова молча отбрасываются
 
@@ -428,7 +428,7 @@ async def _process_suggestions(
             "SELECT id FROM user_words WHERE learning_profile_id = %s AND word_id = %s",
             [profile_id, word["id"]],
         )
-        if cur.fetchone():
+        if await cur.fetchone():
             continue
 
         suggestions.append(
@@ -457,7 +457,7 @@ async def _build_saved_result(db: AsyncConnection, exercise_id: int) -> dict:
            FROM lesson_exercises le WHERE le.id = %s""",
         [exercise_id],
     )
-    exercise = cur.fetchone()
+    exercise = await cur.fetchone()
     if not exercise:
         raise ValueError("exercise_not_found")
 
@@ -470,7 +470,7 @@ async def _build_saved_result(db: AsyncConnection, exercise_id: int) -> dict:
         "SELECT id, lemma, pos, translations FROM words WHERE id = ANY(%s)",
         [word_ids],
     )
-    words_data = {r["id"]: r for r in cur.fetchall()}
+    words_data = {r["id"]: r for r in await cur.fetchall()}
 
     words_response = []
     for tw in target_words:
@@ -494,7 +494,7 @@ async def _build_saved_result(db: AsyncConnection, exercise_id: int) -> dict:
             "SELECT id, lemma, pos, translations FROM words WHERE id = %s",
             [sw["word_id"]],
         )
-        word = cur.fetchone()
+        word = await cur.fetchone()
         if word:
             suggestions.append(
                 {
