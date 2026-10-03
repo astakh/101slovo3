@@ -214,7 +214,27 @@ async def evaluate_exercise(
         # 8. Валидация ответа LLM
         # ═══════════════════════════════════════════
         print("📝 Step 8: Validating LLM response...")
-        evaluations_raw = llm_response.get("evaluations", [])
+        
+        # Маппинг: преобразуем неправильный формат ответа LLM в правильный
+        # LLM может возвращать: {"word_id": "перевод", ...} вместо {"evaluations": [...]}
+        if "evaluations" not in llm_response:
+            print("⚠️ LLM returned incorrect format, applying mapping...")
+            evaluations_raw = []
+            for key, value in llm_response.items():
+                if key.isdigit():  # word_id
+                    word_id = int(key)
+                    # Определяем результат на основе наличия user_fragment
+                    result = "correct" if value else "incorrect"
+                    evaluations_raw.append({
+                        "word_id": word_id,
+                        "result": result,
+                        "user_fragment": value
+                    })
+            llm_response["evaluations"] = evaluations_raw
+            print(f"✅ Mapped {len(evaluations_raw)} evaluations")
+        else:
+            evaluations_raw = llm_response.get("evaluations", [])
+        
         suggested_words_raw = llm_response.get("new_suggested_words", [])
         
         print(f"Evaluations count: {len(evaluations_raw)}")
