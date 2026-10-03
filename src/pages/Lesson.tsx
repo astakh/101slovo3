@@ -189,7 +189,7 @@ export default function Lesson() {
         },
         body: JSON.stringify({
           exercise_id: currentExercise.exercise_id,
-          translation: userTranslation,
+          user_translation: userTranslation,
           dont_know: false,
         }),
       });
@@ -230,7 +230,7 @@ export default function Lesson() {
         },
         body: JSON.stringify({
           exercise_id: currentExercise.exercise_id,
-          translation: null,
+          user_translation: null,
           dont_know: true,
         }),
       });
