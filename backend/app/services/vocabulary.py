@@ -33,7 +33,7 @@ async def get_vocabulary_list(
         "SELECT last_lesson_number FROM learning_profiles WHERE id = %s",
         [profile_id],
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     last_lesson_number = profile["last_lesson_number"] if profile else 0
 
     # Базовый запрос
@@ -61,7 +61,7 @@ async def get_vocabulary_list(
         WHERE {where_sql}
     """
     cur = await db.execute(count_query, params)
-    total = cur.fetchone()["cnt"]
+    total = (await cur.fetchone())["cnt"]
 
     # Получение данных
     offset = (page - 1) * page_size
@@ -76,7 +76,7 @@ async def get_vocabulary_list(
     """
     params.extend([page_size, offset])
     cur = await db.execute(data_query, params)
-    rows = cur.fetchall()
+    rows = await cur.fetchall()
 
     items = []
     for r in rows:
@@ -117,7 +117,7 @@ async def get_vocabulary_word(
         "SELECT last_lesson_number FROM learning_profiles WHERE id = %s",
         [profile_id],
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     last_lesson_number = profile["last_lesson_number"] if profile else 0
 
     # Получаем слово из user_words
@@ -129,7 +129,7 @@ async def get_vocabulary_word(
            WHERE uw.learning_profile_id = %s AND uw.word_id = %s""",
         [profile_id, word_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row:
         raise ValueError("word_not_found")
 
@@ -175,7 +175,7 @@ async def change_word_status(
         "SELECT last_lesson_number FROM learning_profiles WHERE id = %s",
         [profile_id],
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise ValueError("profile_not_found")
     last_lesson_number = profile["last_lesson_number"]
@@ -187,7 +187,7 @@ async def change_word_status(
                WHERE learning_profile_id = %s AND word_id = %s FOR UPDATE""",
             [profile_id, word_id],
         )
-        uw = cur.fetchone()
+        uw = await cur.fetchone()
         if not uw:
             raise ValueError("word_not_found")
 

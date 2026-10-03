@@ -45,7 +45,7 @@ async def vocabulary_list(
     cur = await db.execute(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -76,7 +76,7 @@ async def vocabulary_word(
     cur = await db.execute(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -114,7 +114,7 @@ async def vocabulary_change_status(
     cur = await db.execute(
         "SELECT id FROM learning_profiles WHERE user_id = %s", [user_id]
     )
-    profile = cur.fetchone()
+    profile = await cur.fetchone()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

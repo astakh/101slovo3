@@ -112,7 +112,7 @@ async def list_reports(
     # Подсчет общего количества
     count_query = f"SELECT COUNT(*) as cnt FROM sentence_reports sr {where_clause}"
     cur = await db.execute(count_query, params)
-    total = cur.fetchone()["cnt"]
+    total = (await cur.fetchone())["cnt"]
     
     # Получение данных
     offset = (page - 1) * page_size
@@ -129,7 +129,7 @@ async def list_reports(
     """
     params.extend([page_size, offset])
     cur = await db.execute(data_query, params)
-    reports = cur.fetchall()
+    reports = await cur.fetchall()
     
     return {
         "items": reports,
@@ -155,7 +155,7 @@ async def update_report(
             "SELECT id, status FROM sentence_reports WHERE id = %s FOR UPDATE",
             [report_id],
         )
-        report = cur.fetchone()
+        report = await cur.fetchone()
         if not report:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -207,7 +207,7 @@ async def list_users(
     # Подсчет общего количества
     count_query = f"SELECT COUNT(*) as cnt FROM users {where_clause}"
     cur = await db.execute(count_query, params)
-    total = cur.fetchone()["cnt"]
+    total = (await cur.fetchone())["cnt"]
     
     # Получение данных
     offset = (page - 1) * page_size
@@ -220,7 +220,7 @@ async def list_users(
     """
     params.extend([page_size, offset])
     cur = await db.execute(data_query, params)
-    users = cur.fetchall()
+    users = await cur.fetchall()
     
     return {
         "items": users,
@@ -245,7 +245,7 @@ async def reset_user_password(
     async with db.transaction():
         # Проверяем существование пользователя
         cur = await db.execute("SELECT id, email FROM users WHERE id = %s", [user_id])
-        user = cur.fetchone()
+        user = await cur.fetchone()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -1,47 +1,79 @@
 #!/usr/bin/env python3
 """
-Скрипт для исправления отсутствующих await перед fetchone() и fetchall()
-во всех файлах бэкенда.
+Скрипт для автоматического исправления отсутствующих await перед fetchone() и fetchall()
+во всех Python файлах проекта.
 """
 
 import re
 from pathlib import Path
+
 
 def fix_file(filepath: Path) -> bool:
     """Исправляет один файл. Возвращает True, если были изменения."""
     content = filepath.read_text(encoding='utf-8')
     original = content
     
-    # Паттерн: cur.fetchone() или cur.fetchall() без await перед ними
-    # Ищем строки, где есть cur.fetchone() или cur.fetchall(), но нет await перед ними
+    # Паттерн для поиска cur.fetchone() и cur.fetchall() без await
+    # Ищем строки, где есть = cur.fetchone() или = cur.fetchall(), но нет await перед cur
     
-    lines = content.split('\n')
-    fixed_lines = []
+    # Исправляем присваивания: row = cur.fetchone() -> row = await cur.fetchone()
+    content = re.sub(
+        r'(\s+)(\w+)\s*=\s*cur\.fetchone\(\)',
+        r'\1\2 = await cur.fetchone()',
+        content
+    )
     
-    for line in lines:
-        # Проверяем, есть ли в строке cur.fetchone() или cur.fetchall()
-        if 'cur.fetchone()' in line or 'cur.fetchall()' in line:
-            # Проверяем, есть ли уже await перед cur
-            # Паттерн: что-то вроде "= cur.fetchone()" или "if cur.fetchone()"
-            # Но НЕ "await cur.fetchone()"
-            
-            # Если строка содержит "await cur.fetchone()" или "await cur.fetchall()", пропускаем
-            if 'await cur.fetchone()' in line or 'await cur.fetchall()' in line:
-                fixed_lines.append(line)
-                continue
-            
-            # Иначе добавляем await перед cur.fetchone() или cur.fetchall()
-            line = line.replace('cur.fetchone()', 'await cur.fetchone()')
-            line = line.replace('cur.fetchall()', 'await cur.fetchall()')
-        
-        fixed_lines.append(line)
+    content = re.sub(
+        r'(\s+)(\w+)\s*=\s*cur\.fetchall\(\)',
+        r'\1\2 = await cur.fetchall()',
+        content
+    )
     
-    fixed_content = '\n'.join(fixed_lines)
+    # Исправляем inline присваивания с индексацией: total = cur.fetchone()["cnt"]
+    content = re.sub(
+        r'(\s+)(\w+)\s*=\s*cur\.fetchone\(\)\[',
+        r'\1\2 = (await cur.fetchone())[',
+        content
+    )
     
-    if fixed_content != original:
-        filepath.write_text(fixed_content, encoding='utf-8')
+    # Исправляем условия: if cur.fetchone(): -> if await cur.fetchone():
+    content = re.sub(
+        r'(\s+)if\s+cur\.fetchone\(\):',
+        r'\1if await cur.fetchone():',
+        content
+    )
+    
+    content = re.sub(
+        r'(\s+)if\s+not\s+cur\.fetchone\(\):',
+        r'\1if not await cur.fetchone():',
+        content
+    )
+    
+    # Исправляем for loops: for r in cur.fetchall(): -> for r in await cur.fetchall():
+    content = re.sub(
+        r'(\s+)for\s+(\w+)\s+in\s+cur\.fetchall\(\):',
+        r'\1for \2 in await cur.fetchall():',
+        content
+    )
+    
+    # Исправляем set comprehensions: {r["id"] for r in cur.fetchall()}
+    content = re.sub(
+        r'for\s+(\w+)\s+in\s+cur\.fetchall\(\)',
+        r'for \1 in await cur.fetchall()',
+        content
+    )
+    
+    # Исправляем dict comprehensions: {r["status"]: r["cnt"] for r in cur.fetchall()}
+    # Уже покрыто предыдущим паттерном
+    
+    # Убираем дублирование await (если уже есть await await)
+    content = re.sub(r'await\s+await\s+', 'await ', content)
+    
+    if content != original:
+        filepath.write_text(content, encoding='utf-8')
         return True
     return False
+
 
 def main():
     """Главная функция."""
@@ -70,6 +102,7 @@ def main():
         print(f"\n✨ Готово! Все файлы исправлены.")
     else:
         print(f"\n✅ Все файлы уже корректны.")
+
 
 if __name__ == '__main__':
     main()

@@ -205,7 +205,7 @@ async def lesson_start(
            WHERE u.id = %s""",
         [user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row or not row["is_onboarded"]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

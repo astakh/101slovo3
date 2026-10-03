@@ -136,12 +136,11 @@ async def import_dictionary(
     skipped = 0
     
     # Получаем или создаем словарь
-    cur = await db.execute(
-        "SELECT id FROM dictionaries WHERE code = %s",
-        [code],
-    )
-    row = cur.fetchone()
-    
+        cur = await db.execute(
+            "SELECT id FROM dictionaries WHERE code = %s",
+            [code],
+        )
+        row = await cur.fetchone()    
     if row:
         dictionary_id = row["id"]
         # Обновляем название и описание
@@ -150,14 +149,13 @@ async def import_dictionary(
             [name, description, dictionary_id],
         )
     else:
-        cur = await db.execute(
-            """INSERT INTO dictionaries (code, name, description)
-               VALUES (%s, %s, %s)
-               RETURNING id""",
-            [code, name, description],
-        )
-        dictionary_id = cur.fetchone()["id"]
-    
+            cur = await db.execute(
+                """INSERT INTO dictionaries (code, name, description)
+                   VALUES (%s, %s, %s)
+                   RETURNING id""",
+                [code, name, description],
+            )
+            dictionary_id = (await cur.fetchone())["id"]    
     # Импортируем слова
     for word in valid_words:
         lemma = word["lemma"]

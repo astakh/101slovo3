@@ -38,7 +38,7 @@ async def get_learning_profile(
            WHERE lp.user_id = %s""",
         [user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -63,7 +63,7 @@ async def get_learning_profile(
            WHERE learning_profile_id = %s AND status = 'completed'""",
         [profile_id],
     )
-    completed_lessons = cur.fetchone()["cnt"]
+    completed_lessons = (await cur.fetchone())["cnt"]
 
     # Точность (всё время)
     cur = await db.execute(
@@ -75,7 +75,7 @@ async def get_learning_profile(
            WHERE l.learning_profile_id = %s AND le.status = 'evaluated'""",
         [profile_id],
     )
-    acc_row = cur.fetchone()
+    acc_row = await cur.fetchone()
     accuracy_all = (
         round(acc_row["success"] / acc_row["total"], 4) if acc_row["total"] > 0 else 0.0
     )
@@ -95,7 +95,7 @@ async def get_learning_profile(
              AND l.completed_local_date >= %s""",
         [profile_id, today - timedelta(days=30)],
     )
-    acc30_row = cur.fetchone()
+    acc30_row = await cur.fetchone()
     accuracy_30 = (
         round(acc30_row["success"] / acc30_row["total"], 4) if acc30_row["total"] > 0 else 0.0
     )
@@ -147,7 +147,7 @@ async def update_learning_profile(
             "SELECT id FROM learning_profiles WHERE user_id = %s FOR UPDATE",
             [user_id],
         )
-        profile = cur.fetchone()
+        profile = await cur.fetchone()
         if not profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -221,7 +221,7 @@ async def list_dictionaries(db: AsyncConnection = Depends(get_db)):
            GROUP BY d.id, d.code, d.name, d.description
            ORDER BY d.name"""
     )
-    rows = cur.fetchall()
+    rows = await cur.fetchall()
 
     result = []
     for r in rows:
@@ -264,7 +264,7 @@ async def update_timezone(
             "SELECT timezone, timezone_changed_at FROM users WHERE id = %s FOR UPDATE",
             [user_id],
         )
-        user = cur.fetchone()
+        user = await cur.fetchone()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -281,7 +281,7 @@ async def update_timezone(
                 "SELECT lp.id FROM learning_profiles lp WHERE lp.user_id = %s",
                 [user_id],
             )
-            profile_id = cur.fetchone()["id"]
+            profile_id = (await cur.fetchone())["id"]
 
             cur = await db.execute(
                 """SELECT COUNT(*) as cnt 
@@ -289,7 +289,7 @@ async def update_timezone(
                    WHERE learning_profile_id = %s AND started_local_date = %s""",
                 [profile_id, today],
             )
-            lessons_today = cur.fetchone()["cnt"]
+            lessons_today = (await cur.fetchone())["cnt"]
 
             cur = await db.execute(
                 """SELECT DISTINCT completed_local_date 
@@ -297,7 +297,7 @@ async def update_timezone(
                    WHERE learning_profile_id = %s AND status = 'completed'""",
                 [profile_id],
             )
-            dates = {r["completed_local_date"] for r in cur.fetchall()}
+            dates = {r["completed_local_date"] for r in await cur.fetchall()}
             streak_data = calculate_streak(dates, today)
 
             return TimezoneResponse(
@@ -338,7 +338,7 @@ async def update_timezone(
         "SELECT id FROM learning_profiles WHERE user_id = %s",
         [user_id],
     )
-    profile_id = cur.fetchone()["id"]
+    profile_id = (await cur.fetchone())["id"]
 
     cur = await db.execute(
         """SELECT COUNT(*) as cnt 
@@ -346,7 +346,7 @@ async def update_timezone(
            WHERE learning_profile_id = %s AND started_local_date = %s""",
         [profile_id, today],
     )
-    lessons_today = cur.fetchone()["cnt"]
+    lessons_today = (await cur.fetchone())["cnt"]
 
     cur = await db.execute(
         """SELECT DISTINCT completed_local_date 
@@ -354,7 +354,7 @@ async def update_timezone(
            WHERE learning_profile_id = %s AND status = 'completed'""",
         [profile_id],
     )
-    dates = {r["completed_local_date"] for r in cur.fetchall()}
+    dates = {r["completed_local_date"] for r in await cur.fetchall()}
     streak_data = calculate_streak(dates, today)
 
     return TimezoneResponse(

@@ -84,7 +84,7 @@ async def get_prompt(
         "SELECT key, system_template, updated_at, updated_by FROM prompts WHERE key = %s",
         [key],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

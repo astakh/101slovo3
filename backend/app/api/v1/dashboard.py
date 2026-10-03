@@ -48,7 +48,7 @@ async def get_dashboard_summary(
            WHERE u.id = %s""",
         [user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -71,7 +71,7 @@ async def get_dashboard_summary(
            WHERE learning_profile_id = %s AND started_local_date = %s""",
         [profile_id, today],
     )
-    lessons_today = cur.fetchone()["cnt"]
+    lessons_today = (await cur.fetchone())["cnt"]
 
     # 3. Незавершённый урок (resume)
     cur = await db.execute(
@@ -84,7 +84,7 @@ async def get_dashboard_summary(
            GROUP BY l.id, l.lesson_number""",
         [profile_id],
     )
-    resume_row = cur.fetchone()
+    resume_row = await cur.fetchone()
     resume = None
     if resume_row:
         resume = DashboardResume(
@@ -102,7 +102,7 @@ async def get_dashboard_summary(
            GROUP BY status""",
         [profile_id],
     )
-    words_dict = {r["status"]: r["cnt"] for r in cur.fetchall()}
+    words_dict = {r["status"]: r["cnt"] for r in await cur.fetchall()}
     words = DashboardWords(
         active=words_dict.get("active", 0),
         mastered=words_dict.get("mastered", 0),
@@ -118,7 +118,7 @@ async def get_dashboard_summary(
              AND completed_local_date IS NOT NULL""",
         [profile_id],
     )
-    dates = {r["completed_local_date"] for r in cur.fetchall()}
+    dates = {r["completed_local_date"] for r in await cur.fetchall()}
     streak_data = calculate_streak(dates, today)
 
     # 6. Определяем CTA

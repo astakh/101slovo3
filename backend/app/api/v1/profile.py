@@ -38,7 +38,7 @@ async def get_profile_stats(
            WHERE u.id = %s""",
         [user_id],
     )
-    row = cur.fetchone()
+    row = await cur.fetchone()
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -88,7 +88,7 @@ async def get_profile_stats(
             params.append(today - timedelta(days=days_ago))
 
         cur = await db.execute(query, params)
-        r = cur.fetchone()
+        r = await cur.fetchone()
         if r["total"] == 0:
             return 0.0
         return round(r["success"] / r["total"], 4)
@@ -113,7 +113,7 @@ async def get_profile_stats(
            WHERE learning_profile_id = %s AND status = 'completed'""",
         [profile_id],
     )
-    completed_lessons = cur.fetchone()["cnt"]
+    completed_lessons = (await cur.fetchone())["cnt"]
 
     return ProfileStatsResponse(
         streak_current=streak_data["current"],

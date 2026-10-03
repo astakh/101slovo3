@@ -48,7 +48,7 @@ async def list_tables(
             "SELECT reltuples::bigint as estimate FROM pg_class WHERE relname = %s",
             [table],
         )
-        row = cur.fetchone()
+        row = await cur.fetchone()
         row_count = max(row["estimate"], 0) if row else 0
 
         # Число колонок
@@ -57,7 +57,7 @@ async def list_tables(
                WHERE table_name = %s AND table_schema = 'public'""",
             [table],
         )
-        col_count = cur.fetchone()["cnt"]
+        col_count = (await cur.fetchone())["cnt"]
 
         result.append(
             {
@@ -108,7 +108,7 @@ async def get_table_content(
            ORDER BY ordinal_position""",
         [table_name],
     )
-    columns = cur.fetchall()
+    columns = await cur.fetchall()
 
     # Первичный ключ
     cur = await db.execute(
@@ -198,7 +198,7 @@ async def get_table_content(
     params.extend([page_size, offset])
 
     cur = await db.execute(query, params)
-    rows = cur.fetchall()
+    rows = await cur.fetchall()
 
     # 8. Общее число строк
     try:
@@ -211,7 +211,7 @@ async def get_table_content(
         cur = await db.execute(
             count_query, params[: len(params) - 2]
         )  # Без LIMIT/OFFSET
-        total = cur.fetchone()["cnt"]
+        total = (await cur.fetchone())["cnt"]
     except Exception:
         total = None
 
