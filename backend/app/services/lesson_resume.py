@@ -41,7 +41,7 @@ async def get_current_exercise(
 
     # Получаем первое невыполненное упражнение
     cur = await db.execute(
-        """SELECT id, order_index, target_sentence 
+        """SELECT id, order_index, target_sentence, reference_translation, target_words
            FROM lesson_exercises 
            WHERE lesson_id = %s AND status = 'pending' 
            ORDER BY order_index LIMIT 1""",
@@ -61,5 +61,7 @@ async def get_current_exercise(
             "exercise_id": current["id"],
             "order_index": current["order_index"],
             "sentence": current["target_sentence"],
+            "reference_translation": current["reference_translation"],
+            "target_words": current["target_words"],
         },
     }

@@ -103,6 +103,13 @@ export default function Lesson() {
 
       const data = await response.json();
       
+      console.log('📥 API response for /lesson/current:', data);
+      
+      // Проверяем, что current_exercise существует
+      if (!data.current_exercise) {
+        throw new Error('Текущее упражнение не найдено в ответе API');
+      }
+      
       // Преобразуем данные из API в формат Lesson
       setLesson({
         lesson_id: data.lesson_id,
@@ -111,7 +118,8 @@ export default function Lesson() {
         exercises: [data.current_exercise], // Начинаем с текущего упражнения
       });
       
-      setCurrentExerciseIndex(data.exercises_done || 0);
+      // Всегда начинаем с индекса 0, так как массив содержит только одно упражнение
+      setCurrentExerciseIndex(0);
     } catch (err) {
       setError('Не удалось загрузить урок');
       console.error(err);
@@ -334,6 +342,32 @@ export default function Lesson() {
   }
 
   const currentExercise = lesson.exercises[currentExerciseIndex];
+
+  // Логирование для отладки
+  console.log('🔍 Lesson data:', lesson);
+  console.log('🔍 Current exercise index:', currentExerciseIndex);
+  console.log('🔍 Current exercise:', currentExercise);
+
+  if (!currentExercise) {
+    console.error('❌ Current exercise is undefined!');
+    console.error('   lesson.exercises:', lesson.exercises);
+    console.error('   currentExerciseIndex:', currentExerciseIndex);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md text-center">
+          <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Ошибка</h2>
+          <p className="text-gray-600 mb-6">Не удалось загрузить упражнение</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700"
+          >
+            На главную
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
