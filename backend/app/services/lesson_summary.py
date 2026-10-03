@@ -44,7 +44,6 @@ async def get_lesson_summary(
     correct = 0
     typo = 0
     incorrect = 0
-    suggestions_added = 0
 
     for ex in exercises:
         for tw in ex["target_words"]:
@@ -60,12 +59,20 @@ async def get_lesson_summary(
             elif result == "incorrect":
                 incorrect += 1
 
-        for sw in ex["suggested_words"]:
-            if sw.get("state") == "added":
-                suggestions_added += 1
-
-    reviewed = words_total - new_words
+    # Вычисляем точность
     without_errors = correct + typo
+    accuracy = (without_errors / words_total * 100) if words_total > 0 else 0
+    
+    # Вычисляем время урока
+    cur = await db.execute(
+        """SELECT started_at, completed_at 
+           FROM lessons WHERE id = %s""",
+        [lesson_id],
+    )
+    lesson_times = await cur.fetchone()
+    time_spent = 0
+    if lesson_times and lesson_times["started_at"] and lesson_times["completed_at"]:
+        time_spent = int((lesson_times["completed_at"] - lesson_times["started_at"]).total_seconds())
 
     # 3. Расчёт стрика
     cur = await db.execute(
@@ -99,14 +106,16 @@ async def get_lesson_summary(
     streak_data["extended_today"] = extended_today
 
     return {
+        "lesson_id": lesson_id,
         "lesson_number": lesson["lesson_number"],
+        "exercises_total": len(exercises),
         "words_total": words_total,
-        "reviewed": reviewed,
-        "new_words": new_words,
-        "correct": correct,
-        "typo": typo,
-        "incorrect": incorrect,
-        "without_errors": without_errors,
-        "suggestions_added": suggestions_added,
-        "streak": streak_data,
+        "correct_count": correct,
+        "incorrect_count": incorrect,
+        "typo_count": typo,
+        "accuracy": accuracy,
+        "time_spent": time_spent,
+        "new_words_learned": new_words,
+        "streak_current": streak_data["current"],
+        "streak_longest": streak_data["longest"],
     }

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import LessonPreview from './pages/LessonPreview';
 import Lesson from './pages/Lesson';
+import LessonSummary from './pages/LessonSummary';
 import Settings from './pages/Settings';
 
 const queryClient = new QueryClient({
@@ -73,6 +74,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Lesson />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lesson/:lessonId/summary"
+              element={
+                <ProtectedRoute>
+                  <LessonSummary />
                 </ProtectedRoute>
               }
             />
