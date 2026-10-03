@@ -119,7 +119,10 @@ export default function Dashboard() {
             <p className="text-gray-600 mb-6">
               Начните новый урок или продолжите предыдущий
             </p>
-            <button className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+            <button 
+              onClick={() => navigate('/lesson')}
+              className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+            >
               Начать урок
             </button>
           </div>

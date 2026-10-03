@@ -44,19 +44,52 @@ const TIMEZONES = [
   { value: 'Asia/Magadan', label: 'Магадан (UTC+11)' },
 ];
 
+const DICTIONARIES = [
+  { 
+    id: 1, 
+    code: 'general', 
+    name: 'Общий словарь', 
+    description: 'Базовая лексика для повседневного общения',
+    icon: '📚'
+  },
+  { 
+    id: 2, 
+    code: 'business', 
+    name: 'Бизнес английский', 
+    description: 'Лексика для деловой переписки и переговоров',
+    icon: '💼'
+  },
+  { 
+    id: 3, 
+    code: 'travel', 
+    name: 'Путешествия', 
+    description: 'Слова и фразы для поездок за границу',
+    icon: '✈️'
+  },
+  { 
+    id: 4, 
+    code: 'it', 
+    name: 'IT и технологии', 
+    description: 'Терминология для IT-специалистов',
+    icon: '💻'
+  },
+];
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const [step, setStep] = useState(1);
   const [level, setLevel] = useState('');
+  const [dictionaryId, setDictionaryId] = useState<number | null>(null);
   const [timezone, setTimezone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   const canProceed = () => {
     if (step === 1) return !!level;
-    if (step === 2) return !!timezone;
+    if (step === 2) return dictionaryId !== null;
+    if (step === 3) return !!timezone;
     return true;
   };
 
@@ -84,7 +117,7 @@ export default function Onboarding() {
       //     'Content-Type': 'application/json',
       //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
       //   },
-      //   body: JSON.stringify({ level, timezone }),
+      //   body: JSON.stringify({ level, dictionary_id: dictionaryId, timezone }),
       // });
 
       // Имитация API вызова
@@ -95,7 +128,7 @@ export default function Onboarding() {
         setUser({ ...user, is_onboarded: true });
       }
 
-      console.log('✅ Онбординг завершён:', { level, timezone });
+      console.log('✅ Онбординг завершён:', { level, dictionaryId, timezone });
       navigate('/dashboard');
     } catch (error) {
       console.error('❌ Ошибка онбординга:', error);
@@ -219,6 +252,51 @@ export default function Onboarding() {
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <BookOpen className="text-indigo-600" size={24} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Выберите словарь
+                  </h2>
+                </div>
+                <p className="text-gray-600">
+                  Словарь определяет набор слов для изучения
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {DICTIONARIES.map((dict) => (
+                  <button
+                    key={dict.id}
+                    onClick={() => setDictionaryId(dict.id)}
+                    className={`text-left p-6 rounded-xl border-2 transition-all ${
+                      dictionaryId === dict.id
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="text-4xl">{dict.icon}</div>
+                      {dictionaryId === dict.id && (
+                        <CheckCircle2 className="text-indigo-600" size={24} />
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      {dict.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {dict.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                     <Clock className="text-indigo-600" size={24} />
                   </div>
                   <h2 className="text-2xl font-bold text-gray-900">
@@ -251,7 +329,7 @@ export default function Onboarding() {
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -270,6 +348,13 @@ export default function Onboarding() {
                   <div className="text-sm text-gray-600 mb-1">Ваш уровень</div>
                   <div className="text-lg font-semibold text-gray-900">
                     {LEVELS.find((l) => l.code === level)?.title} ({level})
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="text-sm text-gray-600 mb-1">Словарь</div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {DICTIONARIES.find((d) => d.id === dictionaryId)?.icon}{' '}
+                    {DICTIONARIES.find((d) => d.id === dictionaryId)?.name}
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">

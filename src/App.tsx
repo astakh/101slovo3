@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
+import Lesson from './pages/Lesson';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lesson"
+              element={
+                <ProtectedRoute>
+                  <Lesson />
                 </ProtectedRoute>
               }
             />
