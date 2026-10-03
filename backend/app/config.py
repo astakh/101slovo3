@@ -52,7 +52,6 @@ class Settings(BaseSettings):
     GIGACHAT_AUTH_KEY: str
     GIGACHAT_SCOPE: str
     GIGACHAT_MODEL: str
-    GIGACHAT_CA_CERT_PATH: str
     GIGACHAT_MAX_CONCURRENCY: int = 5
     GIGACHAT_TOKEN_REFRESH_MINUTES: int = 10
 

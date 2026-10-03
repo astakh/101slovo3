@@ -77,16 +77,7 @@ class GigaTokenManager:
             "Accept": "application/json",
         }
         data = {"scope": settings.GIGACHAT_SCOPE}
-
-        # Создаём SSL контекст с обработкой отсутствия файла сертификата
-        try:
-            ssl_context = ssl.create_default_context(cafile=settings.GIGACHAT_CA_CERT_PATH)
-        except FileNotFoundError:
-            logger.warning(
-                f"Сертификат GigaChat не найден: {settings.GIGACHAT_CA_CERT_PATH}. "
-                "Используются системные сертификаты."
-            )
-            ssl_context = ssl.create_default_context()
+        ssl_context = ssl.create_default_context()
 
         try:
             async with httpx.AsyncClient(verify=ssl_context, timeout=10.0) as client:
@@ -275,16 +266,7 @@ class GigaChatClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-
-        # Создаём SSL контекст с обработкой отсутствия файла сертификата
-        try:
-            ssl_context = ssl.create_default_context(cafile=settings.GIGACHAT_CA_CERT_PATH)
-        except FileNotFoundError:
-            logger.warning(
-                f"Сертификат GigaChat не найден: {settings.GIGACHAT_CA_CERT_PATH}. "
-                "Используются системные сертификаты."
-            )
-            ssl_context = ssl.create_default_context()
+        ssl_context = ssl.create_default_context()
 
         async with httpx.AsyncClient(verify=ssl_context, timeout=timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
