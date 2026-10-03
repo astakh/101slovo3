@@ -117,7 +117,11 @@ export default function Onboarding() {
       //     'Content-Type': 'application/json',
       //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
       //   },
-      //   body: JSON.stringify({ level, dictionary_id: dictionaryId, timezone }),
+      //   body: JSON.stringify({ 
+      //     level, 
+      //     dictionary_id: dictionaryId,
+      //     timezone 
+      //   }),
       // });
 
       // Имитация API вызова
@@ -128,7 +132,11 @@ export default function Onboarding() {
         setUser({ ...user, is_onboarded: true });
       }
 
-      console.log('✅ Онбординг завершён:', { level, dictionaryId, timezone });
+      console.log('✅ Онбординг завершён:', { 
+        level, 
+        dictionary_id: dictionaryId,
+        timezone 
+      });
       navigate('/dashboard');
     } catch (error) {
       console.error('❌ Ошибка онбординга:', error);

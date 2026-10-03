@@ -11,6 +11,7 @@ class OnboardingRequest(BaseModel):
     """Схема для завершения онбординга."""
     timezone: str
     level: Literal["A1", "A2", "B1", "B2"]
+    dictionary_id: int
 
 
 class OnboardingResponse(BaseModel):

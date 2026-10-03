@@ -55,17 +55,16 @@ async def complete_onboarding(
                 detail="already_onboarded",
             )
 
-        # 3. Проверка наличия словаря по умолчанию
+        # 3. Проверка наличия выбранного словаря
         cur_dict = await db.execute(
-            "SELECT id FROM dictionaries WHERE code = %s",
-            [settings.DEFAULT_DICTIONARY_CODE],
+            "SELECT id FROM dictionaries WHERE id = %s",
+            [req.dictionary_id],
         )
         dict_row = cur_dict.fetchone()
         if not dict_row:
-            # Критическая ошибка: словарь по умолчанию не найден
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="default_dictionary_missing",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="dictionary_not_found",
             )
 
         # 4. Обновление пользователя
@@ -76,7 +75,7 @@ async def complete_onboarding(
             [req.timezone, user_id],
         )
 
-        # 5. Создание профиля обучения
+        # 5. Создание профиля обучения с выбранным словарём
         await db.execute(
             """INSERT INTO learning_profiles 
                (user_id, level, dictionary_id, daily_lesson_limit, words_per_lesson) 
@@ -84,7 +83,7 @@ async def complete_onboarding(
             [
                 user_id,
                 req.level,
-                dict_row["id"],
+                req.dictionary_id,
                 settings.DAILY_LESSON_LIMIT_DEFAULT,
                 settings.WORDS_PER_LESSON_DEFAULT,
             ],
