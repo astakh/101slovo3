@@ -142,9 +142,9 @@ async def start_lesson(
         # Подготавливаем данные для LLM
         word_data = {}
         for w in preview.get("due_words", []):
-            word_data[w["word_id"]] = {"lemma": w["lemma"], "pos": w["pos"]}
+            word_data[w["word_id"]] = {"word_id": w["word_id"], "lemma": w["lemma"], "pos": w["pos"]}
         for w in preview.get("new_words", []):
-            word_data[w["word_id"]] = {"lemma": w["lemma"], "pos": w["pos"]}
+            word_data[w["word_id"]] = {"word_id": w["word_id"], "lemma": w["lemma"], "pos": w["pos"]}
 
         llm_groups = []
         for idx, group in enumerate(groups):
@@ -369,6 +369,12 @@ async def start_lesson(
                 result = valid_results[idx]
                 group_words = groups[idx]
 
+                print(f"\n{'='*80}")
+                print(f"📝 Формирование target_words для группы {idx}")
+                print(f"{'='*80}")
+                print(f"Group words (word_id): {group_words}")
+                print(f"LLM returned words: {result.get('words', [])}")
+
                 # Формируем target_words JSONB
                 target_words_json = []
                 for wid in group_words:
@@ -376,15 +382,39 @@ async def start_lesson(
                     sf = None
                     lemma = None
                     pos = None
+                    
+                    print(f"\n🔍 Обработка слова word_id={wid} (is_new={is_new})")
+                    print(f"   Ожидаемое lemma: {word_data[wid]['lemma']}")
+                    print(f"   Ожидаемое pos: {word_data[wid]['pos']}")
+                    
+                    # Ищем совпадение по word_id (предпочтительный способ)
                     for w in result["words"]:
-                        if (
+                        print(f"   Проверяем LLM слово: word_id={w.get('word_id')}, lemma={w.get('lemma')}, pos={w.get('pos')}, surface_form={w.get('surface_form')}")
+                        
+                        # Сначала пробуем сопоставить по word_id
+                        if w.get("word_id") == wid:
+                            sf = w["surface_form"]
+                            lemma = w["lemma"]
+                            pos = w["pos"]
+                            print(f"   ✅ Найдено совпадение по word_id! surface_form={sf}")
+                            break
+                        # Если word_id не совпадает, пробуем по lemma и pos
+                        elif (
                             w["lemma"].lower() == word_data[wid]["lemma"].lower()
                             and w["pos"] == word_data[wid]["pos"]
                         ):
                             sf = w["surface_form"]
                             lemma = w["lemma"]
                             pos = w["pos"]
+                            print(f"   ✅ Найдено совпадение по lemma/pos! surface_form={sf}")
                             break
+                    else:
+                        print(f"   ❌ Совпадение НЕ найдено! Используем fallback")
+                        # Fallback: используем lemma из word_data как surface_form
+                        sf = word_data[wid]["lemma"]
+                        lemma = word_data[wid]["lemma"]
+                        pos = word_data[wid]["pos"]
+                        print(f"   ⚠️ Fallback: surface_form={sf}")
 
                     target_words_json.append(
                         {
@@ -399,6 +429,11 @@ async def start_lesson(
                             "user_fragment": None,
                         }
                     )
+                
+                print(f"\n📊 Итоговые target_words:")
+                for tw in target_words_json:
+                    print(f"   word_id={tw['word_id']}, lemma={tw['lemma']}, pos={tw['pos']}, surface_form={tw['surface_form']}, is_new={tw['is_new']}")
+                print(f"{'='*80}\n")
 
                 # Получаем stage_before для due-слов
                 for tw in target_words_json:
