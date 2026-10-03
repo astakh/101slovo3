@@ -204,49 +204,31 @@ export default function Lesson() {
     try {
       const currentExercise = lesson.exercises[currentExerciseIndex];
       
-      // TODO: Заменить на реальный API вызов
-      // const response = await fetch('http://localhost:8000/lesson/evaluate', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      //   },
-      //   body: JSON.stringify({
-      //     exercise_id: currentExercise.exercise_id,
-      //     translation: userTranslation,
-      //     dont_know: false,
-      //   }),
-      // });
-      // const data = await response.json();
-      // setResult(data);
-      
-      // Мок-результат
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const mockResult: EvaluateResult = {
-        exercise_id: currentExercise.exercise_id,
-        target_sentence: currentExercise.sentence,
-        reference_translation: currentExercise.reference_translation,
-        user_translation: userTranslation,
-        words: currentExercise.target_words.map(tw => ({
-          ...tw,
-          result: 'correct' as const,
-          user_fragment: tw.translations[0],
-        })),
-        suggestions: [
-          {
-            word_id: 100,
-            lemma: 'hard',
-            pos: 'adj',
-            translations: ['усердный', 'тяжёлый'],
-            state: 'suggested',
-          },
-        ],
-        lesson_completed: currentExerciseIndex === lesson.exercises_total - 1,
-      };
-      setResult(mockResult);
+      // Реальный API вызов для проверки через LLM
+      const response = await fetch('http://localhost:8000/lesson/evaluate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({
+          exercise_id: currentExercise.exercise_id,
+          translation: userTranslation,
+          dont_know: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка проверки перевода');
+      }
+
+      const data: EvaluateResult = await response.json();
+      setResult(data);
       setShowResult(true);
     } catch (err) {
-      setError('Ошибка проверки');
+      console.error('Ошибка проверки:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка проверки');
     } finally {
       setSubmitting(false);
     }
@@ -259,26 +241,31 @@ export default function Lesson() {
     try {
       const currentExercise = lesson.exercises[currentExerciseIndex];
       
-      // TODO: API вызов с dont_know: true
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const mockResult: EvaluateResult = {
-        exercise_id: currentExercise.exercise_id,
-        target_sentence: currentExercise.sentence,
-        reference_translation: currentExercise.reference_translation,
-        user_translation: null,
-        words: currentExercise.target_words.map(tw => ({
-          ...tw,
-          result: 'incorrect' as const,
-          user_fragment: null,
-        })),
-        suggestions: [],
-        lesson_completed: currentExerciseIndex === lesson.exercises_total - 1,
-      };
-      setResult(mockResult);
+      // Реальный API вызов с dont_know: true
+      const response = await fetch('http://localhost:8000/lesson/evaluate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({
+          exercise_id: currentExercise.exercise_id,
+          translation: null,
+          dont_know: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка');
+      }
+
+      const data: EvaluateResult = await response.json();
+      setResult(data);
       setShowResult(true);
     } catch (err) {
-      setError('Ошибка');
+      console.error('Ошибка:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка');
     } finally {
       setSubmitting(false);
     }
