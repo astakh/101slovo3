@@ -92,7 +92,7 @@ export default function Lesson() {
         throw new Error('Токен авторизации отсутствует');
       }
 
-      const response = await fetch(`http://localhost:8000/lesson/${id}/current`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/${id}/current`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
@@ -137,7 +137,7 @@ export default function Lesson() {
       }
 
       const idempotencyKey = crypto.randomUUID();
-      const response = await fetch('http://localhost:8000/lesson/start', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ export default function Lesson() {
       }
       
       // Реальный API вызов для проверки через LLM
-      const response = await fetch('http://localhost:8000/lesson/evaluate', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/evaluate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -230,7 +230,7 @@ export default function Lesson() {
       const currentExercise = lesson.exercises[currentExerciseIndex];
       
       // Реальный API вызов с dont_know: true
-      const response = await fetch('http://localhost:8000/lesson/evaluate', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/evaluate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -278,7 +278,7 @@ export default function Lesson() {
           throw new Error('Токен авторизации отсутствует');
         }
 
-        const response = await fetch(`http://localhost:8000/lesson/${lesson.lesson_id}/current`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/${lesson.lesson_id}/current`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
 
@@ -323,7 +323,7 @@ export default function Lesson() {
         throw new Error('Токен авторизации отсутствует');
       }
 
-      const response = await fetch(`http://localhost:8000/lesson/exercises/${result.exercise_id}/suggestions/${wordId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/exercises/${result.exercise_id}/suggestions/${wordId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

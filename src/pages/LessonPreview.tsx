@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { apiClient } from '../api/client';
 
 interface Word {
   word_id: number;
@@ -59,7 +60,7 @@ export default function LessonPreview() {
         throw new Error('Токен авторизации отсутствует');
       }
 
-      const response = await fetch('http://localhost:8000/lesson/preview', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/preview`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +91,7 @@ export default function LessonPreview() {
         throw new Error('Токен авторизации отсутствует');
       }
 
-      const response = await fetch('http://localhost:8000/lesson/new-word/decline', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/new-word/decline`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

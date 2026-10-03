@@ -2,8 +2,6 @@
  * 101slovo — Auth store (простое состояние авторизации)
  */
 
-import { apiClient } from '../api/client';
-
 type AuthState = {
   isAuthenticated: boolean;
 };
@@ -16,7 +14,7 @@ class AuthStore {
 
   constructor() {
     this.state = {
-      isAuthenticated: apiClient.isAuthenticated(),
+      isAuthenticated: !!localStorage.getItem('access_token'),
     };
   }
 
@@ -43,7 +41,7 @@ class AuthStore {
   }
 
   logout() {
-    apiClient.clearTokens();
+    localStorage.removeItem('access_token');
     this.setAuthenticated(false);
   }
 }

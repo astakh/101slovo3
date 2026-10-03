@@ -37,7 +37,7 @@ export default function LessonSummary() {
         throw new Error('Токен авторизации отсутствует');
       }
 
-      const response = await fetch(`http://localhost:8000/lesson/${lessonId}/summary`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/lesson/${lessonId}/summary`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 

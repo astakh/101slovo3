@@ -1,151 +1,217 @@
 /**
- * 101slovo — API Client
- * Базовый HTTP-клиент для взаимодействия с FastAPI-бэкендом.
+ * API клиент для 101slovo
+ * Использует переменную окружения VITE_API_URL
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public detail: string,
-    public code?: string,
-  ) {
-    super(detail);
-    this.name = 'ApiError';
-  }
-}
-
-class ApiClient {
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-
-  constructor() {
-    // Восстановление токенов из localStorage
-    this.accessToken = localStorage.getItem('access_token');
-    this.refreshToken = localStorage.getItem('refresh_token');
-  }
-
-  setTokens(access: string, refresh: string) {
-    this.accessToken = access;
-    this.refreshToken = refresh;
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
-  }
-
-  clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-  }
-
-  isAuthenticated(): boolean {
-    return this.accessToken !== null;
-  }
-
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await response.json();
-      this.setTokens(data.access_token, data.refresh_token);
-      return true;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
-  }
-
-  async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-  ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
-    let response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    // Попытка refresh при 401
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        headers['Authorization'] = `Bearer ${this.accessToken}`;
-        response = await fetch(url, { ...options, headers });
-      }
-    }
-
-    if (!response.ok) {
-      let detail = response.statusText;
-      let code: string | undefined;
-      try {
-        const errorBody = await response.json();
-        detail = errorBody.detail || detail;
-        code = errorBody.code;
-      } catch {
-        // ignore parse error
-      }
-      throw new ApiError(response.status, detail, code);
-    }
-
-    // Для 204 No Content
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json();
-  }
-
-  // Convenience methods
-  get<T>(endpoint: string) {
-    return this.request<T>(endpoint, { method: 'GET' });
-  }
-
-  post<T>(endpoint: string, body?: unknown) {
-    return this.request<T>(endpoint, {
+export const apiClient = {
+  // Auth
+  async login(email: string, password: string) {
+    const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
-  }
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка входа');
+    }
+    return response.json();
+  },
 
-  put<T>(endpoint: string, body?: unknown) {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
+  async register(email: string, password: string) {
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
-  }
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка регистрации');
+    }
+    return response.json();
+  },
 
-  patch<T>(endpoint: string, body?: unknown) {
-    return this.request<T>(endpoint, {
+  async getMe(token: string) {
+    const response = await fetch(`${API_URL}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error('Ошибка получения данных пользователя');
+    }
+    return response.json();
+  },
+
+  // Lessons
+  async getLessonPreview(token: string) {
+    const response = await fetch(`${API_URL}/lesson/preview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось загрузить слова');
+    }
+    return response.json();
+  },
+
+  async declineWord(token: string, wordId: number) {
+    const response = await fetch(`${API_URL}/lesson/new-word/decline`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ word_id: wordId }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось отказаться от слова');
+    }
+    return response.json();
+  },
+
+  async startLesson(token: string, wordIds: number[], idempotencyKey: string) {
+    const response = await fetch(`${API_URL}/lesson/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ word_ids: wordIds }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось начать урок');
+    }
+    return response.json();
+  },
+
+  async getCurrentExercise(token: string, lessonId: number) {
+    const response = await fetch(`${API_URL}/lesson/${lessonId}/current`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось загрузить упражнение');
+    }
+    return response.json();
+  },
+
+  async evaluateExercise(
+    token: string,
+    exerciseId: number,
+    userTranslation: string | null,
+    dontKnow: boolean
+  ) {
+    const response = await fetch(`${API_URL}/lesson/evaluate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        exercise_id: exerciseId,
+        user_translation: userTranslation,
+        dont_know: dontKnow,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка проверки');
+    }
+    return response.json();
+  },
+
+  async handleSuggestion(token: string, exerciseId: number, wordId: number, action: 'add' | 'ignore') {
+    const response = await fetch(`${API_URL}/lesson/exercises/${exerciseId}/suggestions/${wordId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка обработки подсказки');
+    }
+    return response.json();
+  },
+
+  async getLessonSummary(token: string, lessonId: number) {
+    const response = await fetch(`${API_URL}/lesson/${lessonId}/summary`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось загрузить итоги урока');
+    }
+    return response.json();
+  },
+
+  // Onboarding
+  async completeOnboarding(token: string, level: string, dictionaryId: number, timezone: string) {
+    const response = await fetch(`${API_URL}/onboarding/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ level, dictionary_id: dictionaryId, timezone }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Ошибка завершения онбординга');
+    }
+    return response.json();
+  },
+
+  // Settings
+  async getLearningProfile(token: string) {
+    const response = await fetch(`${API_URL}/learning-profile`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить настройки');
+    }
+    return response.json();
+  },
+
+  async updateLearningProfile(token: string, data: any) {
+    const response = await fetch(`${API_URL}/learning-profile`, {
       method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
     });
-  }
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось сохранить настройки');
+    }
+    return response.json();
+  },
 
-  delete<T>(endpoint: string) {
-    return this.request<T>(endpoint, { method: 'DELETE' });
-  }
-}
-
-export const apiClient = new ApiClient();
+  async updateTimezone(token: string, timezone: string) {
+    const response = await fetch(`${API_URL}/settings/timezone`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ timezone }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Не удалось сохранить часовой пояс');
+    }
+    return response.json();
+  },
+};
