@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
+import LessonPreview from './pages/LessonPreview';
 import Lesson from './pages/Lesson';
 
 const queryClient = new QueryClient({
@@ -51,7 +52,23 @@ export default function App() {
               }
             />
             <Route
+              path="/lesson-preview"
+              element={
+                <ProtectedRoute>
+                  <LessonPreview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/lesson"
+              element={
+                <ProtectedRoute>
+                  <Lesson />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lesson/:lessonId"
               element={
                 <ProtectedRoute>
                   <Lesson />

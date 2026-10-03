@@ -1,98 +1,362 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, XCircle, BookOpen } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, BookOpen, Loader2, AlertCircle } from 'lucide-react';
 
-// Мок-данные упражнений (в реальности будет приходить с API)
-const MOCK_EXERCISES = [
-  {
-    id: 1,
-    sentence: 'She achieved her goal through hard work.',
-    targetWords: [
-      { word: 'achieved', translation: 'достигла' },
-      { word: 'goal', translation: 'цели' },
-    ],
-    referenceTranslation: 'Она достигла своей цели благодаря упорному труду.',
-  },
-  {
-    id: 2,
-    sentence: 'The quick brown fox jumps over the lazy dog.',
-    targetWords: [
-      { word: 'quick', translation: 'быстрый' },
-      { word: 'jumps', translation: 'прыгает' },
-    ],
-    referenceTranslation: 'Быстрая коричневая лиса прыгает через ленивую собаку.',
-  },
-  {
-    id: 3,
-    sentence: 'He decided to improve his English skills.',
-    targetWords: [
-      { word: 'decided', translation: 'решил' },
-      { word: 'improve', translation: 'улучшить' },
-    ],
-    referenceTranslation: 'Он решил улучшить свои навыки английского.',
-  },
-  {
-    id: 4,
-    sentence: 'They traveled to many different countries.',
-    targetWords: [
-      { word: 'traveled', translation: 'путешествовали' },
-      { word: 'different', translation: 'разные' },
-    ],
-    referenceTranslation: 'Они путешествовали по многим разным странам.',
-  },
-  {
-    id: 5,
-    sentence: 'The weather is beautiful today.',
-    targetWords: [
-      { word: 'weather', translation: 'погода' },
-      { word: 'beautiful', translation: 'красивая' },
-    ],
-    referenceTranslation: 'Сегодня красивая погода.',
-  },
-];
+interface TargetWord {
+  word_id: number;
+  lemma: string;
+  pos: string;
+  surface_form: string;
+  translations: string[];
+}
+
+interface Exercise {
+  exercise_id: number;
+  order_index: number;
+  sentence: string;
+  reference_translation: string;
+  target_words: TargetWord[];
+}
+
+interface WordResult {
+  word_id: number;
+  lemma: string;
+  pos: string;
+  surface_form: string;
+  result: 'correct' | 'typo' | 'incorrect';
+  user_fragment: string | null;
+  translations: string[];
+}
+
+interface Suggestion {
+  word_id: number;
+  lemma: string;
+  pos: string;
+  translations: string[];
+  state: 'suggested' | 'added' | 'ignored';
+}
+
+interface EvaluateResult {
+  exercise_id: number;
+  target_sentence: string;
+  reference_translation: string;
+  user_translation: string | null;
+  words: WordResult[];
+  suggestions: Suggestion[];
+  lesson_completed: boolean;
+}
 
 export default function Lesson() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { lessonId } = useParams();
+  
+  // Из location state получаем word_ids (от LessonPreview)
+  const { wordIds, lessonNumber } = (location.state as any) || {};
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lesson, setLesson] = useState<{
+    lesson_id: number;
+    lesson_number: number;
+    exercises_total: number;
+    exercises: Exercise[];
+  } | null>(null);
+  
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [userTranslation, setUserTranslation] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
+  const [result, setResult] = useState<EvaluateResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const currentExercise = MOCK_EXERCISES[currentExerciseIndex];
-  const totalExercises = MOCK_EXERCISES.length;
-
-  const handleSubmit = () => {
-    // Имитация проверки перевода
-    // В реальности будет API вызов /lesson/evaluate
-    const correctTranslations = currentExercise.targetWords.map(tw => tw.translation.toLowerCase());
-    const correct = correctTranslations.some(translation => 
-      userTranslation.toLowerCase().includes(translation)
-    );
-    setIsCorrect(correct);
-    setShowResult(true);
-  };
-
-  const handleNext = () => {
-    // Переход к следующему упражнению
-    if (currentExerciseIndex < totalExercises - 1) {
-      setCurrentExerciseIndex(currentExerciseIndex + 1);
-      setShowResult(false);
-      setUserTranslation('');
-      setIsCorrect(false);
+  useEffect(() => {
+    if (lessonId) {
+      // Возобновление существующего урока
+      loadExistingLesson(parseInt(lessonId));
+    } else if (wordIds) {
+      // Старт нового урока
+      startNewLesson();
     } else {
-      // Урок завершён
-      console.log('Урок завершён!');
-      navigate('/dashboard');
+      // Нет данных — возвращаемся на preview
+      navigate('/lesson-preview');
+    }
+  }, []);
+
+  const loadExistingLesson = async (id: number) => {
+    setLoading(true);
+    try {
+      // TODO: Заменить на реальный API вызов
+      // const response = await fetch(`http://localhost:8000/lesson/${id}/current`, {
+      //   headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+      // });
+      // const data = await response.json();
+      
+      // Мок-данные для демонстрации
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setLesson({
+        lesson_id: id,
+        lesson_number: lessonNumber || 5,
+        exercises_total: 3,
+        exercises: generateMockExercises(3),
+      });
+    } catch (err) {
+      setError('Не удалось загрузить урок');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDontKnow = () => {
-    // Обработка кнопки "Не знаю"
-    // В реальности будет API вызов с dont_know: true
-    setIsCorrect(false);
-    setShowResult(true);
+  const startNewLesson = async () => {
+    setLoading(true);
+    try {
+      // TODO: Заменить на реальный API вызов
+      // const idempotencyKey = crypto.randomUUID();
+      // const response = await fetch('http://localhost:8000/lesson/start', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      //     'Idempotency-Key': idempotencyKey,
+      //   },
+      //   body: JSON.stringify({ word_ids: wordIds }),
+      // });
+      // const data = await response.json();
+      
+      // Мок-данные для демонстрации
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Имитация генерации через LLM
+      
+      const exercisesCount = Math.ceil(wordIds.length / 2); // Кластеризация: ~2 слова на упражнение
+      setLesson({
+        lesson_id: Date.now(),
+        lesson_number: lessonNumber || 5,
+        exercises_total: exercisesCount,
+        exercises: generateMockExercises(exercisesCount),
+      });
+    } catch (err) {
+      setError('Не удалось начать урок');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Генерация мок-упражнений (в реальности придут с API)
+  const generateMockExercises = (count: number): Exercise[] => {
+    const sentences = [
+      {
+        sentence: 'She achieved her goal through hard work.',
+        reference: 'Она достигла своей цели благодаря упорному труду.',
+        words: [
+          { word_id: 10, lemma: 'achieve', pos: 'verb', surface_form: 'achieved', translations: ['достигать'] },
+          { word_id: 11, lemma: 'goal', pos: 'noun', surface_form: 'goal', translations: ['цель'] },
+        ],
+      },
+      {
+        sentence: 'He decided to improve his English skills.',
+        reference: 'Он решил улучшить свои навыки английского.',
+        words: [
+          { word_id: 12, lemma: 'decide', pos: 'verb', surface_form: 'decided', translations: ['решать'] },
+          { word_id: 13, lemma: 'improve', pos: 'verb', surface_form: 'improve', translations: ['улучшать'] },
+        ],
+      },
+      {
+        sentence: 'The quick brown fox jumps over the lazy dog.',
+        reference: 'Быстрая коричневая лиса прыгает через ленивую собаку.',
+        words: [
+          { word_id: 14, lemma: 'quick', pos: 'adj', surface_form: 'quick', translations: ['быстрый'] },
+          { word_id: 15, lemma: 'jump', pos: 'verb', surface_form: 'jumps', translations: ['прыгать'] },
+        ],
+      },
+      {
+        sentence: 'They traveled to many different countries.',
+        reference: 'Они путешествовали по многим разным странам.',
+        words: [
+          { word_id: 16, lemma: 'travel', pos: 'verb', surface_form: 'traveled', translations: ['путешествовать'] },
+          { word_id: 17, lemma: 'different', pos: 'adj', surface_form: 'different', translations: ['разный'] },
+        ],
+      },
+      {
+        sentence: 'The weather is beautiful today.',
+        reference: 'Сегодня прекрасная погода.',
+        words: [
+          { word_id: 18, lemma: 'weather', pos: 'noun', surface_form: 'weather', translations: ['погода'] },
+          { word_id: 19, lemma: 'beautiful', pos: 'adj', surface_form: 'beautiful', translations: ['прекрасный'] },
+        ],
+      },
+    ];
+
+    return Array.from({ length: count }, (_, i) => {
+      const s = sentences[i % sentences.length];
+      return {
+        exercise_id: Date.now() + i,
+        order_index: i + 1,
+        sentence: s.sentence,
+        reference_translation: s.reference,
+        target_words: s.words,
+      };
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!lesson) return;
+    
+    setSubmitting(true);
+    try {
+      const currentExercise = lesson.exercises[currentExerciseIndex];
+      
+      // TODO: Заменить на реальный API вызов
+      // const response = await fetch('http://localhost:8000/lesson/evaluate', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      //   },
+      //   body: JSON.stringify({
+      //     exercise_id: currentExercise.exercise_id,
+      //     translation: userTranslation,
+      //     dont_know: false,
+      //   }),
+      // });
+      // const data = await response.json();
+      // setResult(data);
+      
+      // Мок-результат
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const mockResult: EvaluateResult = {
+        exercise_id: currentExercise.exercise_id,
+        target_sentence: currentExercise.sentence,
+        reference_translation: currentExercise.reference_translation,
+        user_translation: userTranslation,
+        words: currentExercise.target_words.map(tw => ({
+          ...tw,
+          result: 'correct' as const,
+          user_fragment: tw.translations[0],
+        })),
+        suggestions: [
+          {
+            word_id: 100,
+            lemma: 'hard',
+            pos: 'adj',
+            translations: ['усердный', 'тяжёлый'],
+            state: 'suggested',
+          },
+        ],
+        lesson_completed: currentExerciseIndex === lesson.exercises_total - 1,
+      };
+      setResult(mockResult);
+      setShowResult(true);
+    } catch (err) {
+      setError('Ошибка проверки');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDontKnow = async () => {
+    if (!lesson) return;
+    
+    setSubmitting(true);
+    try {
+      const currentExercise = lesson.exercises[currentExerciseIndex];
+      
+      // TODO: API вызов с dont_know: true
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const mockResult: EvaluateResult = {
+        exercise_id: currentExercise.exercise_id,
+        target_sentence: currentExercise.sentence,
+        reference_translation: currentExercise.reference_translation,
+        user_translation: null,
+        words: currentExercise.target_words.map(tw => ({
+          ...tw,
+          result: 'incorrect' as const,
+          user_fragment: null,
+        })),
+        suggestions: [],
+        lesson_completed: currentExerciseIndex === lesson.exercises_total - 1,
+      };
+      setResult(mockResult);
+      setShowResult(true);
+    } catch (err) {
+      setError('Ошибка');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (!lesson || !result) return;
+    
+    if (result.lesson_completed) {
+      // Урок завершён — переходим на страницу итогов
+      navigate(`/lesson/${lesson.lesson_id}/summary`);
+    } else {
+      // Следующее упражнение
+      setCurrentExerciseIndex(currentExerciseIndex + 1);
+      setShowResult(false);
+      setResult(null);
+      setUserTranslation('');
+    }
+  };
+
+  const handleSuggestionAction = async (wordId: number, action: 'add' | 'ignore') => {
+    if (!result) return;
+    
+    try {
+      // TODO: API вызов
+      // await fetch(`http://localhost:8000/lesson/exercises/${result.exercise_id}/suggestions/${wordId}`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      //   },
+      //   body: JSON.stringify({ action }),
+      // });
+      
+      // Обновляем состояние подсказок
+      setResult({
+        ...result,
+        suggestions: result.suggestions.map(s =>
+          s.word_id === wordId ? { ...s, state: action as any } : s
+        ),
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin text-indigo-600 mx-auto mb-4" size={48} />
+          <p className="text-gray-600">
+            {lessonId ? 'Загрузка урока...' : 'Генерация предложений...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !lesson) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md text-center">
+          <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Ошибка</h2>
+          <p className="text-gray-600 mb-6">{error || 'Не удалось загрузить урок'}</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700"
+          >
+            На главную
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentExercise = lesson.exercises[currentExerciseIndex];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -109,10 +373,12 @@ export default function Lesson() {
             </button>
             <div className="flex items-center gap-2">
               <BookOpen className="text-indigo-600" size={20} />
-              <span className="font-semibold text-gray-900">Урок 1</span>
+              <span className="font-semibold text-gray-900">
+                Урок {lesson.lesson_number}
+              </span>
             </div>
             <div className="text-sm text-gray-600">
-              Упражнение {currentExerciseIndex + 1} / {totalExercises}
+              Упражнение {currentExerciseIndex + 1} / {lesson.exercises_total}
             </div>
           </div>
         </div>
@@ -129,137 +395,214 @@ export default function Lesson() {
             transition={{ duration: 0.3 }}
             className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8"
           >
-          {/* Sentence */}
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-gray-600 mb-3">
-              Переведите предложение:
-            </h2>
-            <div className="bg-indigo-50 rounded-xl p-6">
-              <p className="text-2xl font-medium text-gray-900">
-                {currentExercise.sentence}
-              </p>
+            {/* Sentence */}
+            <div className="mb-8">
+              <h2 className="text-sm font-medium text-gray-600 mb-3">
+                Переведите предложение:
+              </h2>
+              <div className="bg-indigo-50 rounded-xl p-6">
+                <p className="text-2xl font-medium text-gray-900">
+                  {currentExercise.sentence}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Target Words */}
-          <div className="mb-8">
-            <h3 className="text-sm font-medium text-gray-600 mb-3">
-              Целевые слова:
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {currentExercise.targetWords.map((tw, idx) => (
-                <span
-                  key={idx}
-                  className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-medium"
-                >
-                  {tw.word}
-                </span>
-              ))}
+            {/* Target Words */}
+            <div className="mb-8">
+              <h3 className="text-sm font-medium text-gray-600 mb-3">
+                Целевые слова:
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {currentExercise.target_words.map((tw) => (
+                  <span
+                    key={tw.word_id}
+                    className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-medium"
+                  >
+                    {tw.surface_form}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* User Input */}
-          {!showResult && (
-            <>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ваш перевод:
-                </label>
-                <textarea
-                  value={userTranslation}
-                  onChange={(e) => setUserTranslation(e.target.value)}
-                  placeholder="Введите перевод на русский язык..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none"
-                  rows={4}
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={handleDontKnow}
-                  className="px-6 py-3 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  Не знаю
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!userTranslation.trim()}
-                  className="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Проверить
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Result */}
-          {showResult && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-6"
-            >
-              {/* Status */}
-              <div className={`p-6 rounded-xl ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  {isCorrect ? (
-                    <CheckCircle2 className="text-green-600" size={32} />
-                  ) : (
-                    <XCircle className="text-red-600" size={32} />
-                  )}
-                  <h3 className={`text-xl font-bold ${isCorrect ? 'text-green-900' : 'text-red-900'}`}>
-                    {isCorrect ? 'Отлично!' : 'Не совсем правильно'}
-                  </h3>
+            {/* User Input */}
+            {!showResult && (
+              <>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ваш перевод:
+                  </label>
+                  <textarea
+                    value={userTranslation}
+                    onChange={(e) => setUserTranslation(e.target.value)}
+                    placeholder="Введите перевод на русский язык..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-none"
+                    rows={4}
+                  />
                 </div>
-              </div>
 
-              {/* Reference Translation */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-600 mb-2">
-                  Правильный перевод:
-                </h4>
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-gray-900">
-                    {currentExercise.referenceTranslation}
-                  </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDontKnow}
+                    disabled={submitting}
+                    className="px-6 py-3 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  >
+                    Не знаю
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!userTranslation.trim() || submitting}
+                    className="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />
+                        Проверка...
+                      </>
+                    ) : (
+                      'Проверить'
+                    )}
+                  </button>
                 </div>
-              </div>
+              </>
+            )}
 
-              {/* Target Words with Results */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-600 mb-2">
-                  Целевые слова:
-                </h4>
-                <div className="space-y-2">
-                  {currentExercise.targetWords.map((tw, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-xl ${
-                        isCorrect ? 'bg-green-50' : 'bg-red-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-900">
-                          {tw.word}
-                        </span>
-                        <span className="text-gray-700">{tw.translation}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Next Button */}
-              <button
-                onClick={handleNext}
-                className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+            {/* Result */}
+            {showResult && result && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-6"
               >
-                {currentExerciseIndex < totalExercises - 1 
-                  ? 'Следующее упражнение' 
-                  : 'Завершить урок'}
-              </button>
-            </motion.div>
-          )}
+                {/* Status */}
+                <div className={`p-6 rounded-xl ${
+                  result.words.every(w => w.result === 'correct' || w.result === 'typo')
+                    ? 'bg-green-50'
+                    : 'bg-red-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    {result.words.every(w => w.result === 'correct' || w.result === 'typo') ? (
+                      <CheckCircle2 className="text-green-600" size={32} />
+                    ) : (
+                      <XCircle className="text-red-600" size={32} />
+                    )}
+                    <h3 className={`text-xl font-bold ${
+                      result.words.every(w => w.result === 'correct' || w.result === 'typo')
+                        ? 'text-green-900'
+                        : 'text-red-900'
+                    }`}>
+                      {result.words.every(w => w.result === 'correct' || w.result === 'typo')
+                        ? 'Отлично!'
+                        : 'Есть ошибки'}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Reference Translation */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">
+                    Правильный перевод:
+                  </h4>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-gray-900">{result.reference_translation}</p>
+                  </div>
+                </div>
+
+                {/* Target Words with Results */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-600 mb-2">
+                    Целевые слова:
+                  </h4>
+                  <div className="space-y-2">
+                    {result.words.map((w) => (
+                      <div
+                        key={w.word_id}
+                        className={`p-4 rounded-xl ${
+                          w.result === 'correct' ? 'bg-green-50' :
+                          w.result === 'typo' ? 'bg-yellow-50' : 'bg-red-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-semibold text-gray-900">
+                              {w.surface_form}
+                            </span>
+                            <span className="text-gray-600 ml-2">— {w.lemma}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {w.user_fragment && (
+                              <span className="text-gray-700">{w.user_fragment}</span>
+                            )}
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              w.result === 'correct' ? 'bg-green-200 text-green-800' :
+                              w.result === 'typo' ? 'bg-yellow-200 text-yellow-800' :
+                              'bg-red-200 text-red-800'
+                            }`}>
+                              {w.result === 'correct' ? '✓' : w.result === 'typo' ? '~' : '✗'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Suggestions */}
+                {result.suggestions.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-600 mb-2">
+                      Хотите добавить эти слова?
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {result.suggestions.map((s) => (
+                        <div
+                          key={s.word_id}
+                          className="p-4 bg-purple-50 rounded-xl border border-purple-100"
+                        >
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {s.lemma}
+                          </div>
+                          <div className="text-sm text-gray-600 mb-3">
+                            {s.translations.join(', ')}
+                          </div>
+                          {s.state === 'suggested' && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleSuggestionAction(s.word_id, 'add')}
+                                className="flex-1 px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600"
+                              >
+                                Добавить
+                              </button>
+                              <button
+                                onClick={() => handleSuggestionAction(s.word_id, 'ignore')}
+                                className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300"
+                              >
+                                Пропустить
+                              </button>
+                            </div>
+                          )}
+                          {s.state === 'added' && (
+                            <div className="text-green-600 text-sm font-medium flex items-center gap-1">
+                              <CheckCircle2 size={16} /> Добавлено
+                            </div>
+                          )}
+                          {s.state === 'ignored' && (
+                            <div className="text-gray-500 text-sm">Пропущено</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Next Button */}
+                <button
+                  onClick={handleNext}
+                  className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  {result.lesson_completed ? 'Завершить урок' : 'Следующее упражнение'}
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
