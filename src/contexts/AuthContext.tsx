@@ -6,6 +6,7 @@ interface User {
   id: number;
   email: string;
   is_onboarded: boolean;
+  timezone?: string;
 }
 
 interface AuthContextType {

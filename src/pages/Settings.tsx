@@ -1,21 +1,100 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Save, User, BookOpen, Clock } from 'lucide-react';
+import { ArrowLeft, Save, User, BookOpen, Clock, Loader2, AlertCircle } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+interface LearningProfile {
+  level: string;
+  dictionary: {
+    id: number;
+    code: string;
+    name: string;
+    description: string | null;
+  };
+  daily_lesson_limit: number;
+  daily_lesson_limit_max: number;
+  words_per_lesson: number;
+  words_per_lesson_min: number;
+  words_per_lesson_max: number;
+  stats: {
+    words: {
+      active: number;
+      mastered: number;
+      ignored: number;
+    };
+    accuracy_all_time: number;
+    accuracy_30_days: number;
+    completed_lessons: number;
+  };
+}
+
+const LEVELS = [
+  { code: 'A1', title: 'Начальный', description: 'Знакомые фразы, очень простые слова' },
+  { code: 'A2', title: 'Элементарный', description: 'Простые предложения, повседневные темы' },
+  { code: 'B1', title: 'Средний', description: 'Основные темы, выражение мнения' },
+  { code: 'B2', title: 'Выше среднего', description: 'Сложные тексты, абстрактные темы' },
+];
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { user, setUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [profile, setProfile] = useState<LearningProfile | null>(null);
 
-  // Временные состояния (в реальности будут загружаться с API)
+  // Состояния формы
   const [level, setLevel] = useState('A2');
   const [dailyLimit, setDailyLimit] = useState(1);
   const [wordsPerLesson, setWordsPerLesson] = useState(5);
+  const [timezone, setTimezone] = useState('');
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует');
+      }
+
+      // Загружаем профиль обучения
+      const profileResponse = await fetch(`${API_URL}/learning-profile`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!profileResponse.ok) {
+        throw new Error('Не удалось загрузить настройки');
+      }
+
+      const profileData: LearningProfile = await profileResponse.json();
+      setProfile(profileData);
+
+      // Устанавливаем значения формы
+      setLevel(profileData.level);
+      setDailyLimit(profileData.daily_lesson_limit);
+      setWordsPerLesson(profileData.words_per_lesson);
+      setTimezone(user?.timezone || '');
+
+      console.log('✅ Settings loaded:', profileData);
+    } catch (err) {
+      console.error('❌ Error loading settings:', err);
+      setMessage({ 
+        type: 'error', 
+        text: err instanceof Error ? err.message : 'Не удалось загрузить настройки' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
-    setLoading(true);
+    setSaving(true);
     setMessage(null);
 
     try {
@@ -24,36 +103,86 @@ export default function Settings() {
         throw new Error('Токен авторизации отсутствует');
       }
 
-      // TODO: Заменить на реальный API вызов
-      // const response = await fetch('http://localhost:8000/learning-profile', {
-      //   method: 'PATCH',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${token}`,
-      //   },
-      //   body: JSON.stringify({
-      //     level,
-      //     daily_lesson_limit: dailyLimit,
-      //     words_per_lesson: wordsPerLesson,
-      //   }),
-      // });
+      // Сохраняем настройки профиля обучения
+      const profileResponse = await fetch(`${API_URL}/learning-profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          level,
+          daily_lesson_limit: dailyLimit,
+          words_per_lesson: wordsPerLesson,
+        }),
+      });
 
-      // Имитация API вызова
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!profileResponse.ok) {
+        const error = await profileResponse.json();
+        throw new Error(error.detail || 'Не удалось сохранить настройки');
+      }
+
+      // Сохраняем часовой пояс, если он изменился
+      if (timezone && timezone !== user?.timezone) {
+        const timezoneResponse = await fetch(`${API_URL}/settings/timezone`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ timezone }),
+        });
+
+        if (!timezoneResponse.ok) {
+          const error = await timezoneResponse.json();
+          throw new Error(error.detail || 'Не удалось сохранить часовой пояс');
+        }
+
+        // Обновляем данные пользователя в контексте
+        if (user) {
+          setUser({ ...user, timezone });
+        }
+      }
 
       setMessage({ type: 'success', text: 'Настройки успешно сохранены!' });
+      
+      // Перезагружаем настройки
+      await loadSettings();
     } catch (error) {
+      console.error('❌ Error saving settings:', error);
       setMessage({ 
         type: 'error', 
         text: error instanceof Error ? error.message : 'Ошибка сохранения настроек' 
       });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  if (!user) {
-    return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <Loader2 className="animate-spin text-indigo-600" size={48} />
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md text-center">
+          <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Ошибка</h2>
+          <p className="text-gray-600 mb-6">Не удалось загрузить настройки</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700"
+          >
+            На главную
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -124,10 +253,11 @@ export default function Settings() {
                   onChange={(e) => setLevel(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                 >
-                  <option value="A1">A1 - Начальный</option>
-                  <option value="A2">A2 - Элементарный</option>
-                  <option value="B1">B1 - Средний</option>
-                  <option value="B2">B2 - Выше среднего</option>
+                  {LEVELS.map((lvl) => (
+                    <option key={lvl.code} value={lvl.code}>
+                      {lvl.code} - {lvl.title}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
                   Уровень определяет сложность слов для изучения
@@ -141,14 +271,14 @@ export default function Settings() {
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  max="5"
+                  min={1}
+                  max={profile.daily_lesson_limit_max}
                   value={dailyLimit}
                   onChange={(e) => setDailyLimit(parseInt(e.target.value))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Максимальное количество уроков в день (1-5)
+                  Максимальное количество уроков в день (1-{profile.daily_lesson_limit_max})
                 </p>
               </div>
 
@@ -159,14 +289,30 @@ export default function Settings() {
                 </label>
                 <input
                   type="number"
-                  min="3"
-                  max="10"
+                  min={profile.words_per_lesson_min}
+                  max={profile.words_per_lesson_max}
                   value={wordsPerLesson}
                   onChange={(e) => setWordsPerLesson(parseInt(e.target.value))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Количество новых слов в каждом уроке (3-10)
+                  Количество новых слов в каждом уроке ({profile.words_per_lesson_min}-{profile.words_per_lesson_max})
+                </p>
+              </div>
+
+              {/* Current Dictionary */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Текущий словарь
+                </label>
+                <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="font-medium text-gray-900">{profile.dictionary.name}</div>
+                  {profile.dictionary.description && (
+                    <div className="text-sm text-gray-600 mt-1">{profile.dictionary.description}</div>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Словарь можно изменить при прохождении онбординга
                 </p>
               </div>
             </div>
@@ -182,15 +328,45 @@ export default function Settings() {
             </div>
 
             <div>
-              <p className="text-sm text-gray-600 mb-2">
-                Текущий часовой пояс используется для расчёта стрика и ежедневных лимитов.
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ваш часовой пояс
+              </label>
+              <input
+                type="text"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                placeholder="Europe/Moscow"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Используется для расчёта стрика и ежедневных лимитов. Формат: Region/City (например, Europe/Moscow)
               </p>
-              <button
-                onClick={() => navigate('/onboarding')}
-                className="px-4 py-2 text-indigo-600 font-medium border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
-              >
-                Изменить часовой пояс
-              </button>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Статистика</h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-xl">
+                <div className="text-2xl font-bold text-blue-600">{profile.stats.words.active}</div>
+                <div className="text-sm text-gray-600">Активных слов</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-xl">
+                <div className="text-2xl font-bold text-green-600">{profile.stats.words.mastered}</div>
+                <div className="text-sm text-gray-600">Изучено</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-xl">
+                <div className="text-2xl font-bold text-purple-600">{profile.stats.completed_lessons}</div>
+                <div className="text-sm text-gray-600">Уроков</div>
+              </div>
+              <div className="text-center p-4 bg-indigo-50 rounded-xl">
+                <div className="text-2xl font-bold text-indigo-600">
+                  {(profile.stats.accuracy_all_time * 100).toFixed(0)}%
+                </div>
+                <div className="text-sm text-gray-600">Точность</div>
+              </div>
             </div>
           </div>
 
@@ -217,15 +393,12 @@ export default function Settings() {
             </button>
             <button
               onClick={handleSave}
-              disabled={loading}
+              disabled={saving}
               className="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {saving ? (
                 <>
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
+                  <Loader2 className="animate-spin" size={20} />
                   Сохранение...
                 </>
               ) : (

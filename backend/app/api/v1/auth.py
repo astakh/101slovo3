@@ -237,7 +237,7 @@ async def get_me(
     Получение информации о текущем пользователе.
     """
     cur = await db.execute(
-        "SELECT id, email, is_onboarded, is_admin FROM users WHERE id = %s",
+        "SELECT id, email, is_onboarded, is_admin, timezone FROM users WHERE id = %s",
         [user_id],
     )
     user = await cur.fetchone()

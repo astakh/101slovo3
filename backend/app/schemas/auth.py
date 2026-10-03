@@ -23,3 +23,4 @@ class UserResponse(BaseModel):
     email: str
     is_onboarded: bool
     is_admin: bool
+    timezone: str | None = None
