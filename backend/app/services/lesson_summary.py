@@ -25,7 +25,7 @@ async def get_lesson_summary(
            FROM lessons l WHERE l.id = %s AND l.learning_profile_id = %s""",
         [lesson_id, profile_id],
     )
-    lesson = cur.fetchone()
+    lesson = await cur.fetchone()
     if not lesson:
         raise ValueError("lesson_not_found")
 
@@ -37,7 +37,7 @@ async def get_lesson_summary(
         "SELECT target_words, suggested_words FROM lesson_exercises WHERE lesson_id = %s",
         [lesson_id],
     )
-    exercises = cur.fetchall()
+    exercises = await cur.fetchall()
 
     words_total = 0
     new_words = 0
@@ -74,7 +74,7 @@ async def get_lesson_summary(
            WHERE lp.id = %s""",
         [profile_id],
     )
-    user_tz = cur.fetchone()["timezone"]
+    user_tz = (await cur.fetchone())["timezone"]
     today = get_user_today(user_tz)
 
     cur = await db.execute(
@@ -83,7 +83,7 @@ async def get_lesson_summary(
              AND completed_local_date IS NOT NULL""",
         [profile_id],
     )
-    dates = {r["completed_local_date"] for r in cur.fetchall()}
+    dates = {r["completed_local_date"] for r in await cur.fetchall()}
     streak_data = calculate_streak(dates, today)
 
     # 4. extended_today: первый завершённый урок за эту дату
@@ -93,7 +93,7 @@ async def get_lesson_summary(
              AND completed_local_date = %s AND completed_at < %s""",
         [profile_id, lesson["completed_local_date"], lesson["completed_at"]],
     )
-    earlier_count = cur.fetchone()["cnt"]
+    earlier_count = (await cur.fetchone())["cnt"]
     extended_today = earlier_count == 0
 
     streak_data["extended_today"] = extended_today

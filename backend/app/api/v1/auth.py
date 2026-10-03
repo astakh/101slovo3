@@ -46,7 +46,7 @@ async def register(
     async with db.transaction():
         # Проверка занятости email
         cur = await db.execute("SELECT id FROM users WHERE email = %s", [email])
-        if cur.fetchone():
+        if await cur.fetchone():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="email_taken",
@@ -58,7 +58,7 @@ async def register(
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
             [email, pwd_hash],
         )
-        user_id = cur.fetchone()["id"]
+        user_id = (await cur.fetchone())["id"]
 
         # Генерация и сохранение refresh токена
         raw_token, token_hash, family_id = generate_refresh_token()
@@ -105,7 +105,7 @@ async def login(
             "SELECT id, password_hash FROM users WHERE email = %s",
             [email],
         )
-        user = cur.fetchone()
+        user = await cur.fetchone()
 
         if not user or not verify_password(req.password, user["password_hash"]):
             limiter.record_failure(email)
@@ -157,7 +157,7 @@ async def refresh(
                FROM refresh_tokens WHERE token_hash = %s""",
             [token_hash],
         )
-        old_token = cur.fetchone()
+        old_token = await cur.fetchone()
 
         if not old_token:
             raise HTTPException(
@@ -190,7 +190,7 @@ async def refresh(
                VALUES (%s, %s, %s, now() + interval '30 days') RETURNING id""",
             [old_token["user_id"], old_token["family_id"], new_hash],
         )
-        new_token_id = cur_new.fetchone()["id"]
+        new_token_id = (await cur_new.fetchone())["id"]
 
         # Помечаем старый как использованный
         await db.execute(
@@ -240,7 +240,7 @@ async def get_me(
         "SELECT id, email, is_onboarded, is_admin FROM users WHERE id = %s",
         [user_id],
     )
-    user = cur.fetchone()
+    user = await cur.fetchone()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

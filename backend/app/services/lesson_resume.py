@@ -23,7 +23,7 @@ async def get_current_exercise(
            WHERE l.id = %s AND l.learning_profile_id = %s""",
         [lesson_id, profile_id],
     )
-    lesson = cur.fetchone()
+    lesson = await cur.fetchone()
     if not lesson:
         raise ValueError("lesson_not_found")
 
@@ -37,7 +37,7 @@ async def get_current_exercise(
            FROM lesson_exercises WHERE lesson_id = %s""",
         [lesson_id],
     )
-    stats = cur.fetchone()
+    stats = await cur.fetchone()
 
     # Получаем первое невыполненное упражнение
     cur = await db.execute(
@@ -47,7 +47,7 @@ async def get_current_exercise(
            ORDER BY order_index LIMIT 1""",
         [lesson_id],
     )
-    current = cur.fetchone()
+    current = await cur.fetchone()
 
     if not current:
         # Все упражнения оценены, но урок не завершён — не должно происходить

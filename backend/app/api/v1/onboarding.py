@@ -43,7 +43,7 @@ async def complete_onboarding(
             "SELECT is_onboarded FROM users WHERE id = %s",
             [user_id],
         )
-        user = cur.fetchone()
+        user = await cur.fetchone()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -60,7 +60,7 @@ async def complete_onboarding(
             "SELECT id FROM dictionaries WHERE id = %s",
             [req.dictionary_id],
         )
-        dict_row = cur_dict.fetchone()
+        dict_row = await cur_dict.fetchone()
         if not dict_row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -113,5 +113,5 @@ async def get_dictionaries(
     cur = await db.execute(
         "SELECT id, code, name, description FROM dictionaries ORDER BY name"
     )
-    rows = cur.fetchall()
+    rows = await cur.fetchall()
     return [DictionaryResponse(**row) for row in rows]
