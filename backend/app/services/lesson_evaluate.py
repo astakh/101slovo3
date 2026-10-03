@@ -247,9 +247,17 @@ async def evaluate_exercise(
         print(f"Response word IDs: {response_word_ids}")
         print(f"Expected word IDs: {expected_word_ids}")
         
-        if response_word_ids != expected_word_ids:
-            print(f"❌ Word ID mismatch!")
-            raise LlmInvalidResponse("word_id mismatch")
+        # Fallback: если LLM пропустила слова, дополним их как incorrect
+        missing_word_ids = expected_word_ids - response_word_ids
+        if missing_word_ids:
+            print(f"⚠️ LLM missed {len(missing_word_ids)} words, adding as incorrect")
+            for word_id in missing_word_ids:
+                evaluations_raw.append({
+                    "word_id": word_id,
+                    "result": "incorrect",
+                    "user_fragment": None
+                })
+            print(f"✅ Added missing words as incorrect")
 
         # Проверяем каждое слово один раз
         print("📝 Checking for duplicates...")
