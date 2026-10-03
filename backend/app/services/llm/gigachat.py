@@ -286,10 +286,12 @@ class GigaChatClient:
         timeout: float,
     ) -> dict:
         """Выполняет HTTP-запрос к GigaChat API."""
-        url = "https://api.giga.chat/api/v1/chat/completions"
+        url = "https://api.giga.chat/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "101slovo/1.0",
         }
         payload = {
             "model": settings.GIGACHAT_MODEL,
