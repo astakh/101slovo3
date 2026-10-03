@@ -474,6 +474,18 @@ export default function Lesson() {
                   </div>
                 </div>
 
+                {/* User Translation */}
+                {result.user_translation && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-600 mb-2">
+                      Ваш перевод:
+                    </h4>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <p className="text-gray-900">{result.user_translation}</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Reference Translation */}
                 <div>
                   <h4 className="text-sm font-medium text-gray-600 mb-2">
@@ -489,37 +501,61 @@ export default function Lesson() {
                   <h4 className="text-sm font-medium text-gray-600 mb-2">
                     Целевые слова:
                   </h4>
-                  <div className="space-y-2">
-                    {result.words.map((w) => (
-                      <div
-                        key={w.word_id}
-                        className={`p-4 rounded-xl ${
-                          w.result === 'correct' ? 'bg-green-50' :
-                          w.result === 'typo' ? 'bg-yellow-50' : 'bg-red-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-semibold text-gray-900">
-                              {w.surface_form}
-                            </span>
-                            <span className="text-gray-600 ml-2">— {w.lemma}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {w.user_fragment && (
-                              <span className="text-gray-700">{w.user_fragment}</span>
-                            )}
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  <div className="space-y-3">
+                    {result.words.map((w) => {
+                      const isCorrect = w.result === 'correct' || w.result === 'typo';
+                      const correctTranslation = w.translations[0] || w.lemma;
+                      
+                      return (
+                        <div
+                          key={w.word_id}
+                          className={`p-4 rounded-xl border-2 ${
+                            isCorrect 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-red-50 border-red-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <span className="font-semibold text-gray-900 text-lg">
+                                {w.surface_form}
+                              </span>
+                              <span className="text-gray-600 ml-2 text-sm">
+                                ({w.lemma}, {w.pos})
+                              </span>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                               w.result === 'correct' ? 'bg-green-200 text-green-800' :
                               w.result === 'typo' ? 'bg-yellow-200 text-yellow-800' :
                               'bg-red-200 text-red-800'
                             }`}>
-                              {w.result === 'correct' ? '✓' : w.result === 'typo' ? '~' : '✗'}
+                              {w.result === 'correct' ? '✓ Правильно' : 
+                               w.result === 'typo' ? '~ Опечатка' : 
+                               '✗ Неправильно'}
                             </span>
                           </div>
+                          
+                          {isCorrect ? (
+                            <div className="text-sm text-green-700">
+                              Ваш перевод: <span className="font-medium">{w.user_fragment || correctTranslation}</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="text-sm">
+                                <span className="text-gray-600">Правильный перевод: </span>
+                                <span className="font-medium text-green-700">{correctTranslation}</span>
+                              </div>
+                              {w.user_fragment && (
+                                <div className="text-sm">
+                                  <span className="text-gray-600">Ваш перевод: </span>
+                                  <span className="font-medium text-red-700">{w.user_fragment}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
