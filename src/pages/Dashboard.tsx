@@ -1,6 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, BookOpen, Target, TrendingUp } from 'lucide-react';
+import { LogOut, BookOpen, Target, TrendingUp, Settings } from 'lucide-react';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -30,6 +30,14 @@ export default function Dashboard() {
             
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{user.email}</span>
+              <button
+                onClick={() => navigate('/settings')}
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Настройки"
+              >
+                <Settings size={18} />
+                Настройки
+              </button>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"

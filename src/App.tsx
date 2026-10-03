@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import LessonPreview from './pages/LessonPreview';
 import Lesson from './pages/Lesson';
+import Settings from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Lesson />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />
