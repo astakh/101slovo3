@@ -259,18 +259,58 @@ export default function Lesson() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!lesson || !result) return;
+    
+    console.log('🔍 handleNext called');
+    console.log('   lesson_completed:', result.lesson_completed);
     
     if (result.lesson_completed) {
       // Урок завершён — переходим на страницу итогов
+      console.log('✅ Lesson completed, navigating to summary');
       navigate(`/lesson/${lesson.lesson_id}/summary`);
     } else {
-      // Следующее упражнение
-      setCurrentExerciseIndex(currentExerciseIndex + 1);
-      setShowResult(false);
-      setResult(null);
-      setUserTranslation('');
+      // Загружаем следующее упражнение
+      console.log('📝 Loading next exercise...');
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('Токен авторизации отсутствует');
+        }
+
+        const response = await fetch(`http://localhost:8000/lesson/${lesson.lesson_id}/current`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Не удалось загрузить следующее упражнение');
+        }
+
+        const data = await response.json();
+        console.log('📥 Next exercise loaded:', data);
+
+        if (!data.current_exercise) {
+          throw new Error('Следующее упражнение не найдено');
+        }
+
+        // Обновляем массив упражнений
+        setLesson({
+          ...lesson,
+          exercises: [data.current_exercise],
+        });
+        
+        // Сбрасываем индекс и состояние
+        setCurrentExerciseIndex(0);
+        setShowResult(false);
+        setResult(null);
+        setUserTranslation('');
+        
+        console.log('✅ Next exercise set successfully');
+      } catch (err) {
+        console.error('❌ Error loading next exercise:', err);
+        setError(err instanceof Error ? err.message : 'Не удалось загрузить следующее упражнение');
+      }
     }
   };
 
