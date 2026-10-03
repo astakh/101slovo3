@@ -77,7 +77,15 @@ class GigaTokenManager:
             "Accept": "application/json",
         }
         data = {"scope": settings.GIGACHAT_SCOPE}
-        ssl_context = ssl.create_default_context()
+        
+        # Создаём SSL контекст с учётом настройки проверки
+        if settings.GIGACHAT_VERIFY_SSL:
+            ssl_context = ssl.create_default_context()
+        else:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            logger.warning("⚠️ SSL verification disabled for GigaChat OAuth")
 
         logger.info(f"🔍 GigaChat OAuth Request:")
         logger.info(f"   URL: {url}")
@@ -299,7 +307,15 @@ class GigaChatClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        ssl_context = ssl.create_default_context()
+        
+        # Создаём SSL контекст с учётом настройки проверки
+        if settings.GIGACHAT_VERIFY_SSL:
+            ssl_context = ssl.create_default_context()
+        else:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            logger.warning("⚠️ SSL verification disabled for GigaChat API")
 
         print("=" * 80)
         print("🔍 GigaChat HTTP REQUEST")

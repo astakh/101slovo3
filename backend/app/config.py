@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     GIGACHAT_MODEL: str
     GIGACHAT_MAX_CONCURRENCY: int = 5
     GIGACHAT_TOKEN_REFRESH_MINUTES: int = 10
+    GIGACHAT_VERIFY_SSL: bool = True  # Отключите для разработки (False)
 
     # ─── LLM Generation Params ───────────────────────────────────────
     GEN_TEMPERATURE: float = 0.7
