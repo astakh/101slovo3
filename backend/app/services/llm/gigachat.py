@@ -74,6 +74,7 @@ class GigaTokenManager:
             "Authorization": f"Basic {settings.GIGACHAT_AUTH_KEY}",
             "RqUID": rq_uid,
             "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
         }
         data = {"scope": settings.GIGACHAT_SCOPE}
 
