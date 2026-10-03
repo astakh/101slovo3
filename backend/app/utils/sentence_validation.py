@@ -3,6 +3,7 @@
 Реализует проверку surface_form в предложении и валидацию ответа согласно п. 5.4 шаг 7 ТЗ.
 """
 
+import json
 import logging
 import re
 from typing import Optional
@@ -117,21 +118,38 @@ def validate_group_response(
         None если всё ок, иначе строка с ошибкой
     """
     # Логируем входные данные для отладки
-    logger.info(f"🔍 Validating group {group_index}")
-    logger.info(f"   response_entry keys: {list(response_entry.keys()) if isinstance(response_entry, dict) else 'NOT A DICT'}")
-    logger.info(f"   response_entry: {response_entry}")
+    logger.info("=" * 80)
+    logger.info(f"🔍 VALIDATING GROUP {group_index}")
+    logger.info("=" * 80)
+    logger.info(f"response_entry type: {type(response_entry)}")
+    
+    if not isinstance(response_entry, dict):
+        logger.error(f"❌ response_entry is not a dict: {type(response_entry)}")
+        logger.error(f"   Value: {response_entry}")
+        return f"Group {group_index}: response_entry is not a dict"
+    
+    logger.info(f"response_entry keys: {list(response_entry.keys())}")
+    logger.info("-" * 80)
+    logger.info("response_entry (full):")
+    logger.info(json.dumps(response_entry, ensure_ascii=False, indent=2) if response_entry else str(response_entry))
+    logger.info("-" * 80)
     
     sentence = response_entry.get("sentence", "")
     reference_translation = response_entry.get("reference_translation", "")
     words = response_entry.get("words", [])
     
-    logger.info(f"   sentence: '{sentence}' (len={len(sentence)})")
-    logger.info(f"   reference_translation: '{reference_translation}' (len={len(reference_translation)})")
-    logger.info(f"   words: {words}")
+    logger.info(f"Extracted fields:")
+    logger.info(f"   sentence: '{sentence}' (type={type(sentence).__name__}, len={len(sentence) if isinstance(sentence, str) else 'N/A'})")
+    logger.info(f"   reference_translation: '{reference_translation}' (type={type(reference_translation).__name__}, len={len(reference_translation) if isinstance(reference_translation, str) else 'N/A'})")
+    logger.info(f"   words: {words} (type={type(words).__name__}, len={len(words) if isinstance(words, list) else 'N/A'})")
+    logger.info("=" * 80)
 
     # 6. sentence не пуста и ≤ 200 символов
     if not sentence or len(sentence) > 200:
-        logger.error(f"   ❌ Validation failed: sentence empty or too long (len={len(sentence)})")
+        logger.error(f"❌ Validation failed: sentence empty or too long")
+        logger.error(f"   sentence value: '{sentence}'")
+        logger.error(f"   sentence type: {type(sentence)}")
+        logger.error(f"   sentence length: {len(sentence) if isinstance(sentence, str) else 'N/A'}")
         return f"Group {group_index}: sentence empty or too long"
 
     # 7. reference_translation не пуста и ≤ 300 символов

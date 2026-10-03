@@ -182,14 +182,23 @@ async def start_lesson(
             logger.info("=" * 80)
 
             try:
+                logger.info("🚀 Calling generate_sentences...")
+                logger.info(f"   Level: {level}")
+                logger.info(f"   Groups count: {len(pending_groups)}")
+                logger.info(f"   Groups: {json.dumps(pending_groups, ensure_ascii=False, indent=2)}")
+                
                 response = await generate_sentences(
                     db,
                     level=level,
                     groups=pending_groups,
                     user_id=user_id,
                 )
+                
+                logger.info("✅ generate_sentences completed")
+                logger.info(f"   Response type: {type(response)}")
+                logger.info(f"   Response: {json.dumps(response, ensure_ascii=False, indent=2) if isinstance(response, (dict, list)) else response}")
             except Exception as e:
-                logger.error(f"LLM generation failed: {e}")
+                logger.error(f"❌ LLM generation failed: {e}", exc_info=True)
                 raise LlmUnavailable("llm_unavailable")
 
             # Логируем ответ от LLM для отладки

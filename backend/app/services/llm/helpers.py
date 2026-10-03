@@ -79,8 +79,12 @@ async def generate_sentences(
     logger.info(f"Temperature: {settings.GEN_TEMPERATURE}")
     logger.info(f"Max tokens: 2048")
     logger.info(f"System message length: {len(system_message)}")
-    logger.info(f"System message (first 500 chars): {system_message[:500]}")
-    logger.info(f"User message: {json.dumps(user_message, ensure_ascii=False, indent=2)}")
+    logger.info("-" * 80)
+    logger.info("SYSTEM MESSAGE (FULL):")
+    logger.info(system_message)
+    logger.info("-" * 80)
+    logger.info("USER MESSAGE (FULL):")
+    logger.info(json.dumps(user_message, ensure_ascii=False, indent=2))
     logger.info("=" * 80)
 
     deadline = time.monotonic() + 45.0
@@ -101,8 +105,17 @@ async def generate_sentences(
     )
 
     # Логируем результат для отладки
-    logger.info(f"📦 generate_sentences result type: {type(result)}")
-    logger.info(f"📦 generate_sentences result: {result}")
+    logger.info("=" * 80)
+    logger.info("📦 generate_sentences RESULT")
+    logger.info("=" * 80)
+    logger.info(f"Result type: {type(result)}")
+    logger.info("-" * 80)
+    if isinstance(result, (dict, list)):
+        logger.info("Result (formatted):")
+        logger.info(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        logger.info(f"Result (raw): {result}")
+    logger.info("=" * 80)
 
     # Извлекаем список предложений из ответа LLM
     # LLM может возвращать:

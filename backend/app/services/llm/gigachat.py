@@ -301,19 +301,38 @@ class GigaChatClient:
         }
         ssl_context = ssl.create_default_context()
 
-        logger.info(f"🔍 GigaChat API Request:")
-        logger.info(f"   URL: {url}")
-        logger.info(f"   Model: {settings.GIGACHAT_MODEL}")
-        logger.info(f"   Messages count: {len(messages)}")
-        logger.info(f"   Temperature: {temperature}")
-        logger.info(f"   Max tokens: {max_tokens}")
+        logger.info("=" * 80)
+        logger.info("🔍 GigaChat HTTP REQUEST")
+        logger.info("=" * 80)
+        logger.info(f"URL: {url}")
+        logger.info(f"Method: POST")
+        logger.info("-" * 80)
+        logger.info("Headers:")
+        for key, value in headers.items():
+            if key == "Authorization":
+                logger.info(f"  {key}: Bearer {token[:20]}...")
+            else:
+                logger.info(f"  {key}: {value}")
+        logger.info("-" * 80)
+        logger.info("Payload:")
+        logger.info(json.dumps(payload, ensure_ascii=False, indent=2))
+        logger.info("=" * 80)
 
         async with httpx.AsyncClient(verify=ssl_context, timeout=timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
             
-            logger.info(f"📥 GigaChat API Response:")
-            logger.info(f"   Status: {resp.status_code}")
-            logger.info(f"   Headers: {dict(resp.headers)}")
+            logger.info("=" * 80)
+            logger.info("📥 GigaChat HTTP RESPONSE")
+            logger.info("=" * 80)
+            logger.info(f"Status: {resp.status_code}")
+            logger.info("-" * 80)
+            logger.info("Response Headers:")
+            for key, value in resp.headers.items():
+                logger.info(f"  {key}: {value}")
+            logger.info("-" * 80)
+            logger.info("Response Body (full):")
+            logger.info(resp.text)
+            logger.info("=" * 80)
             
             if resp.status_code != 200:
                 logger.error(f"❌ GigaChat API Error:")
@@ -391,11 +410,29 @@ class GigaChatClient:
                     raise LlmRefused("Content blocked by blacklist")
 
                 # Извлекаем JSON
-                parsed_json = self._extract_json(content)
+                logger.info("🔍 Extracting JSON from content...")
+                logger.info(f"   Content starts with: {content[:100] if len(content) > 100 else content}")
+                
+                try:
+                    parsed_json = self._extract_json(content)
+                    logger.info("✅ JSON extracted successfully")
+                except Exception as e:
+                    logger.error(f"❌ Failed to extract JSON: {e}")
+                    logger.error(f"   Content that failed: {content}")
+                    raise
                 
                 # Логируем извлечённый JSON
-                logger.info(f"📦 Extracted JSON type: {type(parsed_json)}")
-                logger.info(f"📦 Extracted JSON: {parsed_json}")
+                logger.info("=" * 80)
+                logger.info("📦 EXTRACTED JSON")
+                logger.info("=" * 80)
+                logger.info(f"Type: {type(parsed_json)}")
+                logger.info("-" * 80)
+                if isinstance(parsed_json, (dict, list)):
+                    logger.info("Content (formatted):")
+                    logger.info(json.dumps(parsed_json, ensure_ascii=False, indent=2))
+                else:
+                    logger.info(f"Content (raw): {parsed_json}")
+                logger.info("=" * 80)
 
                 # Логируем успех
                 if db and log_context:
@@ -483,17 +520,24 @@ class GigaChatClient:
         
         Обрабатывает:
         - Markdown-обёртки ```json ... ```
-        - Лишний текст до/после JSON
+        - Лиший текст до/после JSON
         - Несовпадающие скобки
         """
+        logger.info("🔍 _extract_json: Starting JSON extraction")
+        logger.info(f"   Input length: {len(text)} chars")
+        logger.info(f"   Input (first 200 chars): {text[:200] if len(text) > 200 else text}")
+        
         text = text.strip()
 
         # Убираем ``` обрамление
         if text.startswith("```json"):
+            logger.info("   Found ```json wrapper, removing...")
             text = text[7:]
         elif text.startswith("```"):
+            logger.info("   Found ``` wrapper, removing...")
             text = text[3:]
         if text.endswith("```"):
+            logger.info("   Found closing ```, removing...")
             text = text[:-3]
         text = text.strip()
 
@@ -505,7 +549,12 @@ class GigaChatClient:
                 break
 
         if start == -1:
+            logger.error("   ❌ No JSON found in response")
+            logger.error(f"   Text after cleanup: {text[:500] if len(text) > 500 else text}")
             raise LlmInvalidResponse("No JSON found in response")
+
+        logger.info(f"   Found JSON start at position {start}")
+        logger.info(f"   First char: {text[start]}")
 
         # Находим парную закрывающую скобку
         depth = 0
@@ -515,8 +564,21 @@ class GigaChatClient:
             elif text[i] in ("}", "]"):
                 depth -= 1
                 if depth == 0:
-                    return json.loads(text[start : i + 1])
+                    json_str = text[start : i + 1]
+                    logger.info(f"   Found JSON end at position {i}")
+                    logger.info(f"   JSON length: {len(json_str)} chars")
+                    logger.info(f"   JSON (first 200 chars): {json_str[:200] if len(json_str) > 200 else json_str}")
+                    
+                    try:
+                        result = json.loads(json_str)
+                        logger.info("   ✅ JSON parsed successfully")
+                        return result
+                    except json.JSONDecodeError as e:
+                        logger.error(f"   ❌ JSON parse error: {e}")
+                        logger.error(f"   JSON string: {json_str}")
+                        raise
 
+        logger.error("   ❌ Unmatched JSON brackets")
         raise LlmInvalidResponse("Unmatched JSON brackets")
 
 
