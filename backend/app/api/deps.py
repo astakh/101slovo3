@@ -47,16 +47,43 @@ async def get_current_user_id(
         async def me(user_id: int = Depends(get_current_user_id)):
             ...
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    token_preview = credentials.credentials[:20] + "..." if len(credentials.credentials) > 20 else credentials.credentials
+    logger.info(f"🔍 Получен токен: {token_preview}")
+    
     try:
         payload = jwt.decode(
             credentials.credentials,
             settings.JWT_SECRET,
             algorithms=["HS256"],
         )
+        logger.info(f"✅ Токен декодирован успешно: {payload}")
+        
         if payload.get("type") != "access":
+            logger.error(f"❌ Неверный тип токена: {payload.get('type')}")
             raise ValueError("Invalid token type")
-        return int(payload["sub"])
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError, KeyError):
+        
+        user_id = int(payload["sub"])
+        logger.info(f"✅ User ID извлечён: {user_id}")
+        return user_id
+    except jwt.ExpiredSignatureError as e:
+        logger.error(f"❌ Токен истёк: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token_expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        logger.error(f"❌ Невалидный токен: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except (ValueError, KeyError) as e:
+        logger.error(f"❌ Ошибка извлечения user_id: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_token",

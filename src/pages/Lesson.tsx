@@ -203,13 +203,23 @@ export default function Lesson() {
     setSubmitting(true);
     try {
       const currentExercise = lesson.exercises[currentExerciseIndex];
+      const token = localStorage.getItem('access_token');
+      
+      console.log('🔍 Отладка проверки упражнения:');
+      console.log('  - Exercise ID:', currentExercise.exercise_id);
+      console.log('  - Token:', token ? `${token.substring(0, 20)}...` : 'ОТСУТСТВУЕТ');
+      console.log('  - Translation:', userTranslation);
+      
+      if (!token) {
+        throw new Error('Токен авторизации отсутствует. Пожалуйста, войдите в систему.');
+      }
       
       // Реальный API вызов для проверки через LLM
       const response = await fetch('http://localhost:8000/lesson/evaluate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           exercise_id: currentExercise.exercise_id,
@@ -218,12 +228,16 @@ export default function Lesson() {
         }),
       });
 
+      console.log('📥 Ответ от API:', response.status, response.statusText);
+
       if (!response.ok) {
         const error = await response.json();
+        console.error('❌ Ошибка API:', error);
         throw new Error(error.detail || 'Ошибка проверки перевода');
       }
 
       const data: EvaluateResult = await response.json();
+      console.log('✅ Успешная проверка:', data);
       setResult(data);
       setShowResult(true);
     } catch (err) {
