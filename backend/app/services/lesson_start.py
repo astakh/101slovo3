@@ -432,10 +432,10 @@ async def _build_existing_lesson_response(
         """SELECT id, order_index, target_sentence 
            FROM lesson_exercises 
            WHERE lesson_id = %s AND status = 'pending' 
-            ORDER BY order_index LIMIT 1""",
-         [lesson_id],
-     )
-     exercise = await cur.fetchone()
+           ORDER BY order_index LIMIT 1""",
+        [lesson_id],
+    )
+    exercise = await cur.fetchone()
     if not exercise:
         # Все упражнения выполнены, но урок ещё in_progress?
         # Это не должно происходить, но обработаем
