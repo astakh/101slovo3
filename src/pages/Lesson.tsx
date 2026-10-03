@@ -16,7 +16,8 @@ interface Exercise {
   order_index: number;
   sentence: string;
   reference_translation: string;
-  target_words: TargetWord[];
+  target_words?: TargetWord[];
+  words?: TargetWord[];
 }
 
 interface WordResult {
@@ -389,7 +390,7 @@ export default function Lesson() {
                 Целевые слова:
               </h3>
               <div className="flex flex-wrap gap-2">
-                {currentExercise.target_words.map((tw) => (
+                {(currentExercise.target_words || currentExercise.words || []).map((tw) => (
                   <span
                     key={tw.word_id}
                     className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-medium"

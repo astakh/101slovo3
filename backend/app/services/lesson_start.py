@@ -363,7 +363,7 @@ async def start_lesson(
 
             # Вставляем упражнения
             first_exercise_id = None
-            first_exercise_sentence = None
+            first_exercise_data = None
 
             for idx in range(len(groups)):
                 result = valid_results[idx]
@@ -374,17 +374,23 @@ async def start_lesson(
                 for wid in group_words:
                     is_new = wid in new_word_ids
                     sf = None
+                    lemma = None
+                    pos = None
                     for w in result["words"]:
                         if (
                             w["lemma"].lower() == word_data[wid]["lemma"].lower()
                             and w["pos"] == word_data[wid]["pos"]
                         ):
                             sf = w["surface_form"]
+                            lemma = w["lemma"]
+                            pos = w["pos"]
                             break
 
                     target_words_json.append(
                         {
                             "word_id": wid,
+                            "lemma": lemma or word_data[wid]["lemma"],
+                            "pos": pos or word_data[wid]["pos"],
                             "surface_form": sf,
                             "is_new": is_new,
                             "stage_before": 0 if is_new else None,
@@ -422,7 +428,13 @@ async def start_lesson(
 
                 if idx == 0:
                     first_exercise_id = exercise_id
-                    first_exercise_sentence = result["sentence"]
+                    first_exercise_data = {
+                        "exercise_id": exercise_id,
+                        "order_index": 1,
+                        "sentence": result["sentence"],
+                        "reference_translation": result["reference_translation"],
+                        "target_words": target_words_json,
+                    }
 
             # События
             await db.execute(
@@ -448,11 +460,7 @@ async def start_lesson(
             "lesson_number": expected_next,
             "exercises_total": len(groups),
             "created": True,
-            "current_exercise": {
-                "exercise_id": first_exercise_id,
-                "order_index": 1,
-                "sentence": first_exercise_sentence,
-            },
+            "current_exercise": first_exercise_data,
         }
 
     finally:
@@ -484,7 +492,7 @@ async def _build_existing_lesson_response(
 
     # Получаем первое невыполненное упражнение
     cur = await db.execute(
-        """SELECT id, order_index, target_sentence 
+        """SELECT id, order_index, target_sentence, reference_translation, target_words
            FROM lesson_exercises 
            WHERE lesson_id = %s AND status = 'pending' 
            ORDER BY order_index LIMIT 1""",
@@ -505,5 +513,7 @@ async def _build_existing_lesson_response(
             "exercise_id": exercise["id"],
             "order_index": exercise["order_index"],
             "sentence": exercise["target_sentence"],
+            "reference_translation": exercise["reference_translation"],
+            "target_words": exercise["target_words"],
         },
     }
