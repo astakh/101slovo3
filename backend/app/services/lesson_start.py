@@ -182,10 +182,13 @@ async def start_lesson(
             logger.info("=" * 80)
 
             try:
-                logger.info("🚀 Calling generate_sentences...")
-                logger.info(f"   Level: {level}")
-                logger.info(f"   Groups count: {len(pending_groups)}")
-                logger.info(f"   Groups: {json.dumps(pending_groups, ensure_ascii=False, indent=2)}")
+                print("=" * 80)
+                print("🚀 CALLING generate_sentences()")
+                print("=" * 80)
+                print(f"Level: {level}")
+                print(f"Groups count: {len(pending_groups)}")
+                print(f"Groups: {json.dumps(pending_groups, ensure_ascii=False, indent=2)}")
+                print("=" * 80)
                 
                 response = await generate_sentences(
                     db,
@@ -194,11 +197,16 @@ async def start_lesson(
                     user_id=user_id,
                 )
                 
-                logger.info("✅ generate_sentences completed")
-                logger.info(f"   Response type: {type(response)}")
-                logger.info(f"   Response: {json.dumps(response, ensure_ascii=False, indent=2) if isinstance(response, (dict, list)) else response}")
+                print("=" * 80)
+                print("✅ generate_sentences() COMPLETED")
+                print("=" * 80)
+                print(f"Response type: {type(response)}")
+                print(f"Response: {json.dumps(response, ensure_ascii=False, indent=2) if isinstance(response, (dict, list)) else response}")
+                print("=" * 80)
             except Exception as e:
-                logger.error(f"❌ LLM generation failed: {e}", exc_info=True)
+                print(f"❌ LLM generation failed: {e}")
+                import traceback
+                traceback.print_exc()
                 raise LlmUnavailable("llm_unavailable")
 
             # Логируем ответ от LLM для отладки

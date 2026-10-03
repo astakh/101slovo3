@@ -14,6 +14,7 @@ from app.config import settings
 from app.services.llm.gigachat import llm_client
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 async def generate_sentences(
@@ -39,6 +40,14 @@ async def generate_sentences(
     Returns:
         Список предложений с target_words и reference_translation
     """
+    print("=" * 80)
+    print("🚀 generate_sentences() ВЫЗВАНА")
+    print("=" * 80)
+    print(f"Level: {level}")
+    print(f"Groups count: {len(groups)}")
+    print(f"Groups: {groups}")
+    print("=" * 80)
+    
     # Читаем промпт из БД
     cur = await db.execute(
         "SELECT system_template FROM prompts WHERE key = 'generate_sentences'"
@@ -46,9 +55,11 @@ async def generate_sentences(
     row = await cur.fetchone()
     if row:
         system_template = row["system_template"]
+        print(f"✅ Loaded prompt from DB: {len(system_template)} chars")
         logger.info(f"✅ Loaded prompt from DB: {len(system_template)} chars")
     else:
         # Запасной текст из кода + критичный лог
+        print("❌ prompt_missing: generate_sentences - using fallback")
         logger.critical("❌ prompt_missing: generate_sentences - using fallback")
         system_template = (
             "Ты лингвист-методист и составляешь учебные предложения. "
@@ -89,6 +100,14 @@ async def generate_sentences(
 
     deadline = time.monotonic() + 45.0
 
+    print("=" * 80)
+    print("📤 ВЫЗЫВАЕМ llm_client.chat_json()")
+    print("=" * 80)
+    print(f"Temperature: {settings.GEN_TEMPERATURE}")
+    print(f"Max tokens: 2048")
+    print(f"Timeout: 25.0s")
+    print("=" * 80)
+
     result = await llm_client.chat_json(
         messages=messages,
         temperature=settings.GEN_TEMPERATURE,
@@ -103,6 +122,13 @@ async def generate_sentences(
             "lesson_id": lesson_id,
         },
     )
+
+    print("=" * 80)
+    print("✅ llm_client.chat_json() ЗАВЕРШЁН")
+    print("=" * 80)
+    print(f"Result type: {type(result)}")
+    print(f"Result: {result}")
+    print("=" * 80)
 
     # Логируем результат для отладки
     logger.info("=" * 80)

@@ -301,38 +301,38 @@ class GigaChatClient:
         }
         ssl_context = ssl.create_default_context()
 
-        logger.info("=" * 80)
-        logger.info("🔍 GigaChat HTTP REQUEST")
-        logger.info("=" * 80)
-        logger.info(f"URL: {url}")
-        logger.info(f"Method: POST")
-        logger.info("-" * 80)
-        logger.info("Headers:")
+        print("=" * 80)
+        print("🔍 GigaChat HTTP REQUEST")
+        print("=" * 80)
+        print(f"URL: {url}")
+        print(f"Method: POST")
+        print("-" * 80)
+        print("Headers:")
         for key, value in headers.items():
             if key == "Authorization":
-                logger.info(f"  {key}: Bearer {token[:20]}...")
+                print(f"  {key}: Bearer {token[:20]}...")
             else:
-                logger.info(f"  {key}: {value}")
-        logger.info("-" * 80)
-        logger.info("Payload:")
-        logger.info(json.dumps(payload, ensure_ascii=False, indent=2))
-        logger.info("=" * 80)
+                print(f"  {key}: {value}")
+        print("-" * 80)
+        print("Payload:")
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        print("=" * 80)
 
         async with httpx.AsyncClient(verify=ssl_context, timeout=timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
             
-            logger.info("=" * 80)
-            logger.info("📥 GigaChat HTTP RESPONSE")
-            logger.info("=" * 80)
-            logger.info(f"Status: {resp.status_code}")
-            logger.info("-" * 80)
-            logger.info("Response Headers:")
+            print("=" * 80)
+            print("📥 GigaChat HTTP RESPONSE")
+            print("=" * 80)
+            print(f"Status: {resp.status_code}")
+            print("-" * 80)
+            print("Response Headers:")
             for key, value in resp.headers.items():
-                logger.info(f"  {key}: {value}")
-            logger.info("-" * 80)
-            logger.info("Response Body (full):")
-            logger.info(resp.text)
-            logger.info("=" * 80)
+                print(f"  {key}: {value}")
+            print("-" * 80)
+            print("Response Body (full):")
+            print(resp.text)
+            print("=" * 80)
             
             if resp.status_code != 200:
                 logger.error(f"❌ GigaChat API Error:")
@@ -387,14 +387,14 @@ class GigaChatClient:
                 content = choices[0].get("message", {}).get("content", "")
 
                 # Логируем сырой ответ от LLM
-                logger.info("=" * 80)
-                logger.info("📥 LLM RAW RESPONSE")
-                logger.info("=" * 80)
-                logger.info(f"Finish reason: {finish_reason}")
-                logger.info(f"Content length: {len(content)}")
-                logger.info(f"Content (full):")
-                logger.info(content)
-                logger.info("=" * 80)
+                print("=" * 80)
+                print("📥 LLM RAW RESPONSE")
+                print("=" * 80)
+                print(f"Finish reason: {finish_reason}")
+                print(f"Content length: {len(content)}")
+                print(f"Content (full):")
+                print(content)
+                print("=" * 80)
 
                 # Обработка finish_reason
                 if finish_reason == "length":
@@ -410,29 +410,29 @@ class GigaChatClient:
                     raise LlmRefused("Content blocked by blacklist")
 
                 # Извлекаем JSON
-                logger.info("🔍 Extracting JSON from content...")
-                logger.info(f"   Content starts with: {content[:100] if len(content) > 100 else content}")
+                print("🔍 Extracting JSON from content...")
+                print(f"   Content starts with: {content[:100] if len(content) > 100 else content}")
                 
                 try:
                     parsed_json = self._extract_json(content)
-                    logger.info("✅ JSON extracted successfully")
+                    print("✅ JSON extracted successfully")
                 except Exception as e:
-                    logger.error(f"❌ Failed to extract JSON: {e}")
-                    logger.error(f"   Content that failed: {content}")
+                    print(f"❌ Failed to extract JSON: {e}")
+                    print(f"   Content that failed: {content}")
                     raise
                 
                 # Логируем извлечённый JSON
-                logger.info("=" * 80)
-                logger.info("📦 EXTRACTED JSON")
-                logger.info("=" * 80)
-                logger.info(f"Type: {type(parsed_json)}")
-                logger.info("-" * 80)
+                print("=" * 80)
+                print("📦 EXTRACTED JSON")
+                print("=" * 80)
+                print(f"Type: {type(parsed_json)}")
+                print("-" * 80)
                 if isinstance(parsed_json, (dict, list)):
-                    logger.info("Content (formatted):")
-                    logger.info(json.dumps(parsed_json, ensure_ascii=False, indent=2))
+                    print("Content (formatted):")
+                    print(json.dumps(parsed_json, ensure_ascii=False, indent=2))
                 else:
-                    logger.info(f"Content (raw): {parsed_json}")
-                logger.info("=" * 80)
+                    print(f"Content (raw): {parsed_json}")
+                print("=" * 80)
 
                 # Логируем успех
                 if db and log_context:
@@ -523,21 +523,21 @@ class GigaChatClient:
         - Лиший текст до/после JSON
         - Несовпадающие скобки
         """
-        logger.info("🔍 _extract_json: Starting JSON extraction")
-        logger.info(f"   Input length: {len(text)} chars")
-        logger.info(f"   Input (first 200 chars): {text[:200] if len(text) > 200 else text}")
+        print("🔍 _extract_json: Starting JSON extraction")
+        print(f"   Input length: {len(text)} chars")
+        print(f"   Input (first 200 chars): {text[:200] if len(text) > 200 else text}")
         
         text = text.strip()
 
         # Убираем ``` обрамление
         if text.startswith("```json"):
-            logger.info("   Found ```json wrapper, removing...")
+            print("   Found ```json wrapper, removing...")
             text = text[7:]
         elif text.startswith("```"):
-            logger.info("   Found ``` wrapper, removing...")
+            print("   Found ``` wrapper, removing...")
             text = text[3:]
         if text.endswith("```"):
-            logger.info("   Found closing ```, removing...")
+            print("   Found closing ```, removing...")
             text = text[:-3]
         text = text.strip()
 
@@ -549,12 +549,12 @@ class GigaChatClient:
                 break
 
         if start == -1:
-            logger.error("   ❌ No JSON found in response")
-            logger.error(f"   Text after cleanup: {text[:500] if len(text) > 500 else text}")
+            print("   ❌ No JSON found in response")
+            print(f"   Text after cleanup: {text[:500] if len(text) > 500 else text}")
             raise LlmInvalidResponse("No JSON found in response")
 
-        logger.info(f"   Found JSON start at position {start}")
-        logger.info(f"   First char: {text[start]}")
+        print(f"   Found JSON start at position {start}")
+        print(f"   First char: {text[start]}")
 
         # Находим парную закрывающую скобку
         depth = 0
@@ -565,20 +565,20 @@ class GigaChatClient:
                 depth -= 1
                 if depth == 0:
                     json_str = text[start : i + 1]
-                    logger.info(f"   Found JSON end at position {i}")
-                    logger.info(f"   JSON length: {len(json_str)} chars")
-                    logger.info(f"   JSON (first 200 chars): {json_str[:200] if len(json_str) > 200 else json_str}")
+                    print(f"   Found JSON end at position {i}")
+                    print(f"   JSON length: {len(json_str)} chars")
+                    print(f"   JSON (first 200 chars): {json_str[:200] if len(json_str) > 200 else json_str}")
                     
                     try:
                         result = json.loads(json_str)
-                        logger.info("   ✅ JSON parsed successfully")
+                        print("   ✅ JSON parsed successfully")
                         return result
                     except json.JSONDecodeError as e:
-                        logger.error(f"   ❌ JSON parse error: {e}")
-                        logger.error(f"   JSON string: {json_str}")
+                        print(f"   ❌ JSON parse error: {e}")
+                        print(f"   JSON string: {json_str}")
                         raise
 
-        logger.error("   ❌ Unmatched JSON brackets")
+        print("   ❌ Unmatched JSON brackets")
         raise LlmInvalidResponse("Unmatched JSON brackets")
 
 
