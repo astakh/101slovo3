@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, BookOpen, Target, TrendingUp, Settings, Loader2, AlertCircle } from 'lucide-react';
+import APP_CONFIG from '../config/texts';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -94,13 +95,13 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md text-center">
           <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Ошибка</h2>
-          <p className="text-gray-600 mb-6">{error || 'Не удалось загрузить данные'}</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{APP_CONFIG.MESSAGES.ERROR}</h2>
+          <p className="text-gray-600 mb-6">{error || APP_CONFIG.DASHBOARD.ERROR_LOAD}</p>
           <button
             onClick={handleLogout}
             className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700"
           >
-            Выйти
+            {APP_CONFIG.AUTH.LOGOUT_BUTTON}
           </button>
         </div>
       </div>
@@ -125,7 +126,7 @@ export default function Dashboard() {
               <button
                 onClick={() => navigate('/settings')}
                 className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Настройки"
+                title={APP_CONFIG.AUTH.SETTINGS_BUTTON}
               >
                 <Settings size={18} />
               </button>
@@ -134,7 +135,7 @@ export default function Dashboard() {
                 className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <LogOut size={18} />
-                Выйти
+                {APP_CONFIG.AUTH.LOGOUT_BUTTON}
               </button>
             </div>
           </div>
@@ -145,14 +146,14 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Добро пожаловать, {user.email.split('@')[0]}! 👋
+            {APP_CONFIG.DASHBOARD.WELCOME} {user.email.split('@')[0]}{APP_CONFIG.DASHBOARD.WELCOME_SUFFIX}
           </h1>
           <p className="text-gray-600">
             {dashboard.cta === 'resume' 
-              ? 'Продолжите урок или начните новый'
+              ? APP_CONFIG.DASHBOARD.CTA_RESUME
               : dashboard.cta === 'limit_reached'
-              ? 'Вы достигли дневного лимита уроков'
-              : 'Готовы начать новый урок?'}
+              ? APP_CONFIG.DASHBOARD.CTA_LIMIT
+              : APP_CONFIG.DASHBOARD.CTA_START}
           </p>
         </div>
 
@@ -164,7 +165,7 @@ export default function Dashboard() {
                 <BookOpen className="text-indigo-600" size={24} />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Слов изучено</p>
+                <p className="text-sm text-gray-600">{APP_CONFIG.DASHBOARD.STAT_WORDS}</p>
                 <p className="text-2xl font-bold text-gray-900">{dashboard.words.mastered}</p>
               </div>
             </div>
@@ -176,7 +177,7 @@ export default function Dashboard() {
                 <Target className="text-green-600" size={24} />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Уроков сегодня</p>
+                <p className="text-sm text-gray-600">{APP_CONFIG.DASHBOARD.STAT_LESSONS}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {dashboard.lessons_today} / {dashboard.daily_lesson_limit}
                 </p>
@@ -190,8 +191,8 @@ export default function Dashboard() {
                 <TrendingUp className="text-purple-600" size={24} />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Текущая серия</p>
-                <p className="text-2xl font-bold text-gray-900">{dashboard.streak.current} дней</p>
+                <p className="text-sm text-gray-600">{APP_CONFIG.DASHBOARD.STAT_STREAK}</p>
+                <p className="text-2xl font-bold text-gray-900">{dashboard.streak.current} {APP_CONFIG.DASHBOARD.STAT_STREAK_SUFFIX}</p>
               </div>
             </div>
           </div>
@@ -200,14 +201,14 @@ export default function Dashboard() {
         {/* CTA */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {dashboard.cta === 'resume' ? 'Продолжить урок?' : 'Готовы к уроку?'}
+            {dashboard.cta === 'resume' ? APP_CONFIG.DASHBOARD.SECTION_RESUME : APP_CONFIG.DASHBOARD.SECTION_START}
           </h2>
           <p className="text-gray-600 mb-6">
             {dashboard.cta === 'resume'
-              ? `У вас есть незавершённый урок ${dashboard.resume?.lesson_number}`
+              ? `${APP_CONFIG.DASHBOARD.SECTION_RESUME_DESC} ${dashboard.resume?.lesson_number}`
               : dashboard.cta === 'limit_reached'
-              ? 'Возвращайтесь завтра для новых уроков'
-              : 'Начните новый урок или продолжите изучение'}
+              ? APP_CONFIG.DASHBOARD.SECTION_LIMIT_DESC
+              : APP_CONFIG.DASHBOARD.SECTION_START_DESC}
           </p>
           
           {dashboard.cta === 'resume' && dashboard.resume && (
@@ -224,21 +225,21 @@ export default function Dashboard() {
                 onClick={() => navigate(`/lesson/${dashboard.resume?.lesson_id}`)}
                 className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
               >
-                Продолжить урок
+                {APP_CONFIG.DASHBOARD.BUTTON_RESUME}
               </button>
             ) : dashboard.cta === 'limit_reached' ? (
               <button
                 disabled
                 className="px-6 py-3 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed"
               >
-                Лимит исчерпан
+                {APP_CONFIG.DASHBOARD.BUTTON_LIMIT}
               </button>
             ) : (
               <button
                 onClick={() => navigate('/lesson-preview')}
                 className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
               >
-                Начать урок
+                {APP_CONFIG.DASHBOARD.BUTTON_START}
               </button>
             )}
           </div>
